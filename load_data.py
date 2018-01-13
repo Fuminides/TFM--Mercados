@@ -7,14 +7,26 @@ Created on Fri Jan 12 11:44:19 2018
 import datetime
 import pandas as pd
 import numpy as np
+from pandas_datareader import data
+import quandl
+
+##############################
+# VARIABLES                  #
+##############################
+#Authentification token if you have one for online data provider
+AUTH_TOKEN = None
+#Tickers that you are interested in.
+TICKERS = []
 
 ##############################
 # FUNCTIONS                  #
 ##############################
+
+
 def load_data_frame(path, sep='\t'):
     '''
-        Loads finantial data from a text file separated by tabs.
-        Returns a pandas data_frame.
+    Loads finantial data from a text file separated by tabs.
+    Returns a pandas data_frame.
     '''
     func = lambda dates: [datetime.datetime.strptime(x, '%d/%m/%Y') for x in dates]
     return pd.read_csv(path, sep=sep, parse_dates=['FECHA'],
@@ -72,3 +84,46 @@ def augment_data(stock_values, reference_index=None):
     stock_values['EVL'] = evolution
     stock_values['VCH'] = vol_change
     stock_values['IND'] = good
+
+def load_stock_data(ticker, start=None, end=None, provider='quandl'):
+    '''
+    Given a ticker, it searches for it in quandl service.
+
+    start-end: dates of the records.
+    ¡Be sure it supports your schema!
+
+    '''
+    global AUTH_TOKEN
+
+    if provider == 'quandl':
+        df = quandl.get(ticker, authtoken=auth_token)
+    else:
+        df = data.DataReader(ticker, provider, start, end)
+
+    df['APERTURA'] = df['Open']
+
+    try:
+        df['ULTIMO'] = df['Close']
+    except KeyError:
+        df['ULTIMO'] = df['Last']
+
+    df['MINIMO'] = df['Low']
+    df['MAXIMO'] = df['High']
+    df['VOLUMEN'] = df['Volume']
+    df['TICKER'] = ticker
+    df['FECHA'] = df.index.values
+
+    df = df.loc[:, ['APERTURA', 'ULTIMO', 'MINIMO', 'MAXIMO', 'VOLUMEN', 'TICKER', 'FECHA']]
+
+
+    return df
+
+def load_variables(path="./FD.json"):
+    '''
+    Load global variables: API token and tickers.
+
+    '''
+    global AUTH_TOKEN
+    global TICKERS
+    
+    
