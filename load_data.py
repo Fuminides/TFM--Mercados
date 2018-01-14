@@ -23,7 +23,7 @@ TICKERS = []
 ##############################
 
 
-def load_data_frame(path, sep='\t'):
+def load_local_data(path, sep='\t'):
     '''
     Loads finantial data from a text file separated by tabs.
     Returns a pandas data_frame.
@@ -85,7 +85,7 @@ def augment_data(stock_values, reference_index=None):
     stock_values['VCH'] = vol_change
     stock_values['IND'] = good
 
-def load_stock_data(ticker, start=None, end=None, provider='quandl'):
+def load_online_data(ticker, start=None, end=None, provider='quandl'):
     '''
     Given a ticker, it searches for it in quandl service.
 
@@ -96,7 +96,7 @@ def load_stock_data(ticker, start=None, end=None, provider='quandl'):
     global AUTH_TOKEN
 
     if provider == 'quandl':
-        df = quandl.get(ticker, authtoken=auth_token)
+        df = quandl.get(ticker, authtoken=AUTH_TOKEN)
     else:
         df = data.DataReader(ticker, provider, start, end)
 
@@ -118,12 +118,31 @@ def load_stock_data(ticker, start=None, end=None, provider='quandl'):
 
     return df
 
-def load_variables(path="./FD.json"):
+def init_variables(path="./FD.json"):
     '''
-    Load global variables: API token and tickers.
+    Init global variables: API token and tickers.
 
     '''
     global AUTH_TOKEN
     global TICKERS
     
+    data = json.load(open(path))
     
+    AUTH_TOKEN = data['token']
+    TICKERS = data['ticker']
+    
+def load_full_stock_data(reload=True):
+    '''
+    Loads into memory all the tickers listed in the DF.json file.
+    '''
+    if reload:
+        init_variables()
+
+    dfs = {}
+
+    for ticker in TICKERS:
+        key = TICKERS[ticker]
+        dfs[ticker] = load_online_data(key)
+    
+    return dfs
+        
