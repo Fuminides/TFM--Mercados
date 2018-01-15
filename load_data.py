@@ -5,6 +5,8 @@ Created on Fri Jan 12 11:44:19 2018
 @author: Javier Fumanal Idocin
 """
 import datetime
+import json
+
 import pandas as pd
 import numpy as np
 from pandas_datareader import data
@@ -96,24 +98,28 @@ def load_online_data(ticker, start=None, end=None, provider='quandl'):
     global AUTH_TOKEN
 
     if provider == 'quandl':
-        df = quandl.get(ticker, authtoken=AUTH_TOKEN)
+        df = quandl.get(ticker[0], authtoken=AUTH_TOKEN)
     else:
-        df = data.DataReader(ticker, provider, start, end)
+        df = data.DataReader(ticker[0], provider, start, end)
 
-    df['APERTURA'] = df['Open']
+    if ticker[1] == "index":
+        df['ULTIMO'] = df['Value']
+        df = df.loc[:, ['ULTIMO']]
+    else:
+        df['APERTURA'] = df['Open']
 
-    try:
-        df['ULTIMO'] = df['Close']
-    except KeyError:
-        df['ULTIMO'] = df['Last']
+        try:
+            df['ULTIMO'] = df['Close']
+        except KeyError:
+            df['ULTIMO'] = df['Last']
 
-    df['MINIMO'] = df['Low']
-    df['MAXIMO'] = df['High']
-    df['VOLUMEN'] = df['Volume']
-    df['TICKER'] = ticker
-    df['FECHA'] = df.index.values
+        df['MINIMO'] = df['Low']
+        df['MAXIMO'] = df['High']
+        df['VOLUMEN'] = df['Volume']
+        df['TICKER'] = ticker[0]
+        df['FECHA'] = df.index.values
 
-    df = df.loc[:, ['APERTURA', 'ULTIMO', 'MINIMO', 'MAXIMO', 'VOLUMEN', 'TICKER', 'FECHA']]
+        df = df.loc[:, ['APERTURA', 'ULTIMO', 'MINIMO', 'MAXIMO', 'VOLUMEN', 'TICKER', 'FECHA']]
 
 
     return df
@@ -125,12 +131,12 @@ def init_variables(path="./FD.json"):
     '''
     global AUTH_TOKEN
     global TICKERS
-    
-    data = json.load(open(path))
-    
-    AUTH_TOKEN = data['token']
-    TICKERS = data['ticker']
-    
+
+    data_json = json.load(open(path))
+
+    AUTH_TOKEN = data_json['token']
+    TICKERS = data_json['ticker']
+
 def load_full_stock_data(reload=True):
     '''
     Loads into memory all the tickers listed in the DF.json file.
@@ -143,6 +149,6 @@ def load_full_stock_data(reload=True):
     for ticker in TICKERS:
         key = TICKERS[ticker]
         dfs[ticker] = load_online_data(key)
-    
+
     return dfs
         
