@@ -4,13 +4,14 @@ Created on Fri Jan 12 11:44:19 2018
 
 @author: Javier Fumanal Idocin
 """
-import datetime
 import json
+import quandl
+
 
 import pandas as pd
 import numpy as np
 from pandas_datareader import data
-import quandl
+from datetime import datetime
 
 ##############################
 # VARIABLES                  #
@@ -117,7 +118,8 @@ def load_online_data(ticker, start=None, end=None, provider='quandl'):
         df['MAXIMO'] = df['High']
         df['VOLUMEN'] = df['Volume']
         df['TICKER'] = ticker[0]
-        df['FECHA'] = df.index.values
+        df['FECHA'] = _dates_to_string(df.index.values)
+        df['FECHA'] = df['FECHA'].apply(_number_to_date)
 
         df = df.loc[:, ['APERTURA', 'ULTIMO', 'MINIMO', 'MAXIMO', 'VOLUMEN', 'TICKER', 'FECHA']]
 
@@ -151,4 +153,20 @@ def load_full_stock_data(reload=True):
         dfs[ticker] = load_online_data(key)
 
     return dfs
+
+def filter_numerical(df):
+    '''
+    Returns a data frame only with the financial numerical values.
+    (APERTURA, ULTIMO, MINIMO, MAXIMO, VOLUMEN)
+    '''
+    return df.loc[:, df.columns - ["TICKER"] - ["FECHA"]]
+
+def _dates_to_string(colum_dates):
+    res = []
+    for i in range(len(colum_dates)):
+        res.append(_number_to_date(colum_dates[i]))
+    
+    return res
         
+def _number_to_date(number_date):
+    return str(number_date)[:10]
