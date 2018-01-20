@@ -9,10 +9,13 @@ import pandas
 
 from ggplot import ggplot, geom_line, aes
 from matplotlib import colors as mcolors
- 
+from docx import Document 
+
 def plot_line(X,y):
     '''
     Show on screen a line plot.
+    
+    X,y - 
     '''
     df = pandas.DataFrame()
     
@@ -30,4 +33,4 @@ def plot_line(X,y):
          
     return p
 
-def save_image_to_docx():
+    

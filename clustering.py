@@ -6,6 +6,7 @@ Created on Tue Jan 16 12:17:59 2018
 """
 
 import numpy as np
+import random
 
 from sklearn import linear_model
 from sklearn.preprocessing import PolynomialFeatures
@@ -40,7 +41,7 @@ def regresion_polinomial(X,y, degree=2):
     
     return model
 
-def savitzky_golay(y, window_size, order, deriv=0, rate=1):
+def savitzky_golay(y, window_size=51, order=3, deriv=0, rate=1):
     r"""Smooth (and optionally differentiate) data with a Savitzky-Golay filter.
     The Savitzky-Golay filter removes high frequency noise from data.
     It has the advantage of preserving the original shape and
@@ -110,3 +111,152 @@ def savitzky_golay(y, window_size, order, deriv=0, rate=1):
     y = np.concatenate((firstvals, y, lastvals))
     
     return np.convolve( m[::-1], y, mode='valid')
+
+def locate_local_minmax(series):
+    '''
+    Return the index for the local max and min points located in the series.
+    '''
+    local = []
+    
+    for actual in range(len(series)-2):
+        segmento1 = np.sign(series[actual+1] - series[actual])
+        segmento2 = np.sign(series[actual+2] - series[actual+1])
+        
+        if segmento1 != segmento2:
+            #We've changed our derivate, then we are at local min/max            
+           local.append(actual+1)
+           
+    return local
+                    
+                    
+def environment_filter(maximals, series, size=10):
+    '''
+    Filter local mins and max based on their environment.
+    '''
+    keep = []
+    for x in maximals:
+        keeps = True
+        if x > 0 and x < len(series)-1:
+            segmento1 = np.sign(series[x] - series[x-1])
+            segmento2 = np.sign(series[x+1] - series[x])
+            derecha = x + size
+            izquierda = x - size + 1
+            
+            if(derecha > len(series)):
+                derecha = len(series)
+            if(izquierda < 0):
+                izquierda = 0
+
+            entorno = series[np.arange(izquierda,derecha)]
+            if segmento1 > segmento2:
+                #Local max
+                if np.max(entorno) > series[x]:
+                    keeps = False
+            else:
+                #Local min
+                if np.min(entorno) < series[x]:
+                    keeps = False
+        
+        if keeps:
+            keep.append(x)
+    
+    return keep
+ 
+def extract_features(data, segments):
+    '''
+    Extract features from an interval in a dataset
+    '''
+    
+def similarity(f1,f2):
+    '''
+    Computes the average of the differences between two vectors.
+    '''
+    return np.mean(f1-f2)
+
+def valid_segment(data, intervalo, similarity_function, threshold, montecarlo=4):
+    '''
+    Returns true only if the designated segment is considered to be valid.
+    It samples some subsegments and comparates their features with a distance function.
+    '''
+    first = intervalo[0]
+    last = intervalo[1]
+    segments=[]
+    
+    for i in range(montecarlo):
+        r1 = random.randint(first+1, last)
+        r2 = random.randint(first+1, last)
+        
+        if r2>r1:
+            segments.append([r1,r2])
+        elif r1>r2:
+            segments.append([r2,r1])
+    
+    features1 = extract_features(data, segment1)
+    features2 = extract_features(data, segment2)
+    
+    return similarity_function(features1, features2) < threshold
+    
+def segmentate(intervalo, data, similar_function, threshold, montecarlo=4):
+    '''
+    Given set of data, it divides it into segments according to a distance function.
+    It uses a interval of numbers of the original data. It is recommended for small parts
+    of the original data.
+    
+    Returns the list of indexes of the segments.
+    
+    In case you need a segmentation function for a big amount of data use locate_minmax()
+    (Requires smoothing)
+    '''
+    first = intervalo[0]
+    last = intervalo[1]
+    intervals = []
+    
+    if valid_segment(data, intervalo, similar_function, threshold, montecarlo):
+        #If this is a valid segment, it finishes
+        intervals.append(intervalo)
+    else:
+        last_check = first
+        while(last_check != last):
+            #We'll keep going until the whole interval is segmented.     
+            success = False     
+            while not success:
+                new_interval = [last_check, random.randint(last_check+1, last)]
+                success = valid_segment(data, new_interval, similar_function, threshold, montecarlo)
+                
+                if success:
+                    #We have found a valid segment, we append it to the list of segments
+                    intervals.append(new_interval)
+                    last_check = new_interval[1]
+                    
+    
+    return intervals
+            
+        
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    

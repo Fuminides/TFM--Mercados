@@ -32,13 +32,13 @@ def load_local_data(path, sep='\t'):
     Returns a pandas data_frame.
     '''
     func = lambda dates: [datetime.datetime.strptime(x, '%d/%m/%Y') for x in dates]
-    return pd.read_csv(path, sep=sep, parse_dates=['FECHA'],
+    return pd.read_csv(path, sep=sep, parse_dates=['fecha'],
                        date_parser=func,
-                       dtype={"TICKER":np.str, "APERTURA":np.float, "MAXIMO":np.float,
-                              "MINIMO":np.float, "ULTIMO":np.float, "VOLUMEN":np.float},
+                       dtype={"ticker":np.str, "apertura":np.float, "maximo":np.float,
+                              "minimo":np.float, "cierre":np.float, "volumen":np.float},
                        header=0,
-                       names=["TICKER", "FECHA", "APERTURA", "MAXIMO", "MINIMO",
-                              "ULTIMO", "VOLUMEN"],
+                       names=["ticker", "fecha", "apertura", "maximo", "minimo",
+                              "cierre", "volumen"],
                        decimal=",")
 
 def augment_data(stock_values, reference_index=None):
@@ -69,24 +69,24 @@ def augment_data(stock_values, reference_index=None):
     for i in np.arange(stock_values.shape[0]):
         row = stock_values.iloc[i]
 
-        evolution[i] = row['ULTIMO'] - yesterday_stock
-        vol_change[i] = row['VOLUMEN'] - yesterday_volume
-        ascend[i] = row['ULTIMO'] > yesterday_stock
-        variab[i] = row['MAXIMO']-row['MINIMO']
-        variabp[i] = variab[i]/row['ULTIMO']
+        evolution[i] = row['cierre'] - yesterday_stock
+        vol_change[i] = row['volumen'] - yesterday_volume
+        ascend[i] = row['cierre'] > yesterday_stock
+        variab[i] = row['maximo']-row['minimo']
+        variabp[i] = variab[i]/row['cierre']
 
-        yesterday_stock = row['ULTIMO']
-        yesterday_volume = row['VOLUMEN']
+        yesterday_stock = row['cierre']
+        yesterday_volume = row['volumen']
 
         if reference_index != None:
-            good[i] = row['ULTIMO'] - reference_index[row['FECHA']]['CIERRE']
+            good[i] = row['cierre'] - reference_index[row['fecha']]['cierre']
 
-    stock_values['VAR'] = variab
-    stock_values['VARP'] = variabp
-    stock_values['ASC'] = ascend
-    stock_values['EVL'] = evolution
-    stock_values['VCH'] = vol_change
-    stock_values['IND'] = good
+    stock_values['var'] = variab
+    stock_values['varp'] = variabp
+    stock_values['asc'] = ascend
+    stock_values['evl'] = evolution
+    stock_values['vch'] = vol_change
+    stock_values['ind'] = good
 
 def load_online_data(ticker, start=None, end=None, provider='quandl'):
     '''
@@ -104,24 +104,24 @@ def load_online_data(ticker, start=None, end=None, provider='quandl'):
         df = data.DataReader(ticker[0], provider, start, end)
 
     if ticker[1] == "index":
-        df['ULTIMO'] = df['Value']
-        df = df.loc[:, ['ULTIMO']]
+        df['cierre'] = df['Value']
+        df = df.loc[:, ['cierre']]
     else:
-        df['APERTURA'] = df['Open']
+        df['apertura'] = df['Open']
 
         try:
-            df['ULTIMO'] = df['Close']
+            df['cierre'] = df['Close']
         except KeyError:
-            df['ULTIMO'] = df['Last']
+            df['cierre'] = df['Last']
 
-        df['MINIMO'] = df['Low']
-        df['MAXIMO'] = df['High']
-        df['VOLUMEN'] = df['Volume']
-        df['TICKER'] = ticker[0]
-        df['FECHA'] = _dates_to_string(df.index.values)
-        df['FECHA'] = df['FECHA'].apply(_number_to_date)
+        df['minimo'] = df['Low']
+        df['maximo'] = df['High']
+        df['volumen'] = df['Volume']
+        df['ticker'] = ticker[0]
+        df['fecha'] = _dates_to_string(df.index.values)
+        df['fecha'] = df['fecha'].apply(_number_to_date)
 
-        df = df.loc[:, ['APERTURA', 'ULTIMO', 'MINIMO', 'MAXIMO', 'VOLUMEN', 'TICKER', 'FECHA']]
+        df = df.loc[:, ['apertura', 'cierre', 'minimo', 'maximo', 'volumen', 'ticker', 'fecha']]
 
 
     return df
@@ -157,9 +157,9 @@ def load_full_stock_data(reload=True):
 def filter_numerical(df):
     '''
     Returns a data frame only with the financial numerical values.
-    (APERTURA, ULTIMO, MINIMO, MAXIMO, VOLUMEN)
+    (apertura, cierre, minimo, maximo, volumen)
     '''
-    return df.loc[:, df.columns - ["TICKER"] - ["FECHA"]]
+    return df.loc[:, df.columns - ["ticker"] - ["fecha"]]
 
 def _dates_to_string(colum_dates):
     res = []
