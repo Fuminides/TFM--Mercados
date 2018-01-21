@@ -12,6 +12,7 @@ from sklearn import linear_model
 from sklearn.preprocessing import PolynomialFeatures
 from sklearn.pipeline import make_pipeline
 from math import factorial
+from scipy import stats
 
 
 def normalize_data_frame(df, norm="mean"):
@@ -162,10 +163,11 @@ def environment_filter(maximals, series, size=10):
     
     return keep
  
-def extract_features(data, segments):
+def extract_features(data, f,l):
     '''
     Extract features from an interval in a dataset
     '''
+    return np.array(stats.kurtosis(data[f:l]))
     
 def similarity(f1,f2):
     '''
@@ -180,23 +182,43 @@ def valid_segment(data, intervalo, similarity_function, threshold, montecarlo=4)
     '''
     first = intervalo[0]
     last = intervalo[1]
-    segments=[]
+    
+    if last-first==1:
+        return True
     
     for i in range(montecarlo):
-        r1 = random.randint(first+1, last)
-        r2 = random.randint(first+1, last)
+        r11 = random.randint(first+1, last)
+        r21 = random.randint(first+1, last)
         
-        if r2>r1:
-            segments.append([r1,r2])
-        elif r1>r2:
-            segments.append([r2,r1])
+        while r11==r21:
+            r11 = random.randint(first+1, last)
+            r21 = random.randint(first+1, last)
+            
+        if r21>r11:
+            features1 = extract_features(data, r11,r21)
+        elif r11>r21:
+            features1 = extract_features(data, r21,r11)
+        
+        r12 = random.randint(first+1, last)
+        r22 = random.randint(first+1, last)
+        
+        while r12==r22:
+            r12 = random.randint(first+1, last)
+            r22 = random.randint(first+1, last)
+        
+        if r22>r12:
+           features2 = extract_features(data, r12,r22)
+        elif r12>r22:
+           features2 = extract_features(data, r22,r12)
+               
+        good = similarity_function(features1, features2) < threshold
+
+        if not good:
+            return False
     
-    features1 = extract_features(data, segment1)
-    features2 = extract_features(data, segment2)
+    return True
     
-    return similarity_function(features1, features2) < threshold
-    
-def segmentate(intervalo, data, similar_function, threshold, montecarlo=4):
+def segmentate(intervalo, data, similar_function, threshold, montecarlo=2):
     '''
     Given set of data, it divides it into segments according to a distance function.
     It uses a interval of numbers of the original data. It is recommended for small parts
@@ -227,8 +249,7 @@ def segmentate(intervalo, data, similar_function, threshold, montecarlo=4):
                     #We have found a valid segment, we append it to the list of segments
                     intervals.append(new_interval)
                     last_check = new_interval[1]
-                    
-    
+                
     return intervals
             
         
