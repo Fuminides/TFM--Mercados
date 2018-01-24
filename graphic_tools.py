@@ -9,7 +9,6 @@ import pandas
 
 from ggplot import ggplot, geom_line, aes
 from matplotlib import colors as mcolors
-from docx import Document 
 
 def plot_line(X,y):
     '''
