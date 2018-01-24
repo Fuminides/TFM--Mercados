@@ -25,6 +25,11 @@ TICKERS = []
 # FUNCTIONS                  #
 ##############################
 
+def load_schema(file):
+    '''
+    Loads file that contains a Database schema and maps it to known fields.
+    '''
+    return json.load(open(file))
 
 def load_local_data(path, sep='\t'):
     '''
@@ -88,7 +93,7 @@ def augment_data(stock_values, reference_index=None):
     stock_values['vch'] = vol_change
     stock_values['ind'] = good
 
-def load_online_data(ticker, start=None, end=None, provider='quandl'):
+def load_online_data(ticker, schema=None, start=None, end=None, provider='quandl'):
     '''
     Given a ticker, it searches for it in quandl service.
 
@@ -102,24 +107,34 @@ def load_online_data(ticker, start=None, end=None, provider='quandl'):
         df = quandl.get(ticker[0], authtoken=AUTH_TOKEN)
     else:
         df = data.DataReader(ticker[0], provider, start, end)
-
-    if ticker[1] == "index":
-        df['cierre'] = df['Value']
-        df = df.loc[:, ['cierre']]
+    
+    if schema==None:
+        if ticker[1] == "index":
+            df['cierre'] = df['Value']
+            df = df.loc[:, ['cierre']]
+        else:
+            df['apertura'] = df['Open']
+    
+            try:
+                df['cierre'] = df['Close']
+            except KeyError:
+                df['cierre'] = df['Last']
+    
+            df['minimo'] = df['Low']
+            df['maximo'] = df['High']
+            df['volumen'] = df['Volume']
+            df['ticker'] = ticker[0]
+            df['fecha'] = _dates_to_string(df.index.values)
+            df['fecha'] = df['fecha'].apply(_number_to_date)
     else:
-        df['apertura'] = df['Open']
-
-        try:
-            df['cierre'] = df['Close']
-        except KeyError:
-            df['cierre'] = df['Last']
-
-        df['minimo'] = df['Low']
-        df['maximo'] = df['High']
-        df['volumen'] = df['Volume']
-        df['ticker'] = ticker[0]
-        df['fecha'] = _dates_to_string(df.index.values)
-        df['fecha'] = df['fecha'].apply(_number_to_date)
+        df['cierre'] = df[schema['cierre']]
+        df['apertura'] = df[schema['apertura']]
+        df['minimo'] = df[schema['minimo']]
+        df['maximo'] = df[schema['maximo']]
+        df['volumen'] = df[schema['volumen']]
+        df['fecha'] = df[schema['fecha']]
+        df['ticker'] = df[schema['ticker']]
+            
 
         df = df.loc[:, ['apertura', 'cierre', 'minimo', 'maximo', 'volumen', 'ticker', 'fecha']]
 

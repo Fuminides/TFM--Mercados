@@ -306,7 +306,7 @@ def butter_filter(data, cutoff = 1500, fs = 50000):
     '''
     return _butter_lowpass_filtfilt(data, cutoff, fs)
 
-def low_filter(data, frac=0.025, it):
+def low_filter(data, frac=0.025, it=0):
     '''
     Applies lowess filter to the data.
     '''
