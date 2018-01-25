@@ -25,14 +25,21 @@ TICKERS = []
 # FUNCTIONS                  #
 ##############################
 
-def load_schema(file):
+def load_schema(file = "./Schemas.json"):
     '''
     Loads file that contains a Database schema and maps it to known fields.
     '''
     return json.load(open(file))
 
-def load_local_data(path, sep='\t'):
+def select_schema(name):
     '''
+    Given a name from Quandl, it returns
+    '''
+    schemas = load_schema()
+    return schemas[name.split("\\")[0]]
+
+def load_local_data(path, sep='\t'):
+    '''s
     Loads finantial data from a text file separated by tabs.
     Returns a pandas data_frame.
     '''

@@ -2,7 +2,7 @@
 """
 Created on Tue Jan 16 12:17:59 2018
 
-@author: javi-
+@author: Javier Fumanal Idocin
 """
 
 import numpy as np
@@ -310,7 +310,7 @@ def low_filter(data, frac=0.025, it=0):
     '''
     Applies lowess filter to the data.
     '''
-    return lowess(data, range(len(data)), is_sorted=True, frac, it=it)[:,1]
+    return lowess(data, range(len(data)), is_sorted=True, frac=frac, it=it)[:,1]
     
             
         
