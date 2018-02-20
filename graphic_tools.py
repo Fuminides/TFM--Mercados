@@ -17,7 +17,9 @@ def plot_line(X,y,title=None,labelx=None,labely=None,save=False, colors=None):
     X,y - 
     '''
     df = pandas.DataFrame()
-    img_title = title.replace(" ","").replace(".","-") + ".pdf"
+    
+    if (title!=None):
+        img_title = title.replace(" ","").replace(".","-") + ".pdf"
     
     df['X'] = X 
     for i in range(y.shape[1]):

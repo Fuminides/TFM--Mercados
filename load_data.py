@@ -77,7 +77,8 @@ def augment_data(stock_values, reference_index=None):
 
     yesterday_stock = 0
     yesterday_volume = 0
-
+    yesterday_date = '03/01/1930'
+    
     for i in np.arange(stock_values.shape[0]):
         row = stock_values.iloc[i]
 
@@ -89,9 +90,11 @@ def augment_data(stock_values, reference_index=None):
 
         yesterday_stock = row['cierre']
         yesterday_volume = row['volumen']
-
-        if reference_index != None:
-            good[i] = row['cierre'] - reference_index[row['fecha']]['cierre']
+        
+        if (reference_index != None) and (i > 1):
+            good[i] = evolution[i] - (reference_index[row['fecha']]['cierre']-reference_index[yesterday_date]['cierre'])
+        
+        yesterday_date = row['fecha']
 
     stock_values['var'] = variab
     stock_values['varp'] = variabp
@@ -143,7 +146,7 @@ def load_online_data(ticker, schema=None, start=None, end=None, provider='quandl
         df['ticker'] = df[schema['ticker']]
             
 
-        df = df.loc[:, ['apertura', 'cierre', 'minimo', 'maximo', 'volumen', 'ticker', 'fecha']]
+    df = df.loc[:, ['apertura', 'cierre', 'minimo', 'maximo', 'volumen', 'ticker', 'fecha']]
 
 
     return df
