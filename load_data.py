@@ -39,11 +39,11 @@ def select_schema(name):
     return schemas[name.split("\\")[0]]
 
 def load_local_data(path, sep='\t'):
-    '''s
+    '''
     Loads finantial data from a text file separated by tabs.
     Returns a pandas data_frame.
     '''
-    func = lambda dates: [datetime.datetime.strptime(x, '%d/%m/%Y') for x in dates]
+    func = lambda dates: [datetime.strptime(x, '%d/%m/%Y') for x in dates]
     return pd.read_csv(path, sep=sep, parse_dates=['fecha'],
                        date_parser=func,
                        dtype={"ticker":np.str, "apertura":np.float, "maximo":np.float,

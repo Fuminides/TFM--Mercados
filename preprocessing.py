@@ -32,8 +32,7 @@ def fill_dates(df):
             df.loc[fecha, ]
         except KeyError:
             df.loc[fecha] = [np.nan]*tamano
-            df['fecha'] = _dates_to_string(fecha)
-            df['fecha'] = df['fecha'].apply(_number_to_date)
+            df.loc[fecha, 'fecha'] = _number_to_date(fecha)
             df.loc[fecha, 'ticker'] = ticker
     
     df = df.sort_index()
@@ -56,7 +55,7 @@ def impute_missing(df):
                     
     return df 
 
-def _Bolinger_Bands(stock_price, window_size=15, num_of_std=3):
+def _Bolinger_Bands(stock_price, window_size=21, num_of_std=2):
 
     rolling_mean = stock_price.rolling(window=window_size).mean()
     rolling_std  = stock_price.rolling(window=window_size).std()
@@ -65,7 +64,7 @@ def _Bolinger_Bands(stock_price, window_size=15, num_of_std=3):
 
     return rolling_mean, upper_band, lower_band
 
-def detect_finantial_outliers(df, variable, window_size=15):
+def detect_finantial_outliers(df, variable, window_size=21):
     '''
     Detects values outside the bolinger band.
     '''
@@ -80,7 +79,7 @@ def detect_finantial_outliers(df, variable, window_size=15):
             
     return [minors, majors]
 
-def crop_outliers(df, variable, window_size=20):
+def crop_outliers(df, variable, window_size=21):
     '''
     If any value is outside the bolinger band, it gets erased.
     '''
