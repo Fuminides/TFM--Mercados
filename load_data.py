@@ -66,42 +66,69 @@ def augment_data(stock_values, reference_index=None):
         -WIP
     '''
     variab = np.zeros(stock_values.shape[0])
-    variabp = np.zeros(stock_values.shape[0])
-    ascend = np.zeros(stock_values.shape[0])
-    evolution = np.zeros(stock_values.shape[0])
+    vvariab = np.zeros(stock_values.shape[0])
+    vcierre = np.zeros(stock_values.shape[0])
+    vapertura = np.zeros(stock_values.shape[0])
+    vvolume = np.zeros(stock_values.shape[0])
+    vmax = np.zeros(stock_values.shape[0])
+    vmin = np.zeros(stock_values.shape[0])
 
     if reference_index != None:
         good = np.zeros(stock_values.shape[0])
 
-    vol_change = np.zeros(stock_values.shape[0])
-
-    yesterday_stock = 0
-    yesterday_volume = 0
-    yesterday_date = '03/01/1930'
+    yesterday = stock_values.iloc[0]
     
     for i in np.arange(stock_values.shape[0]):
         row = stock_values.iloc[i]
 
-        evolution[i] = row['cierre'] - yesterday_stock
-        vol_change[i] = row['volumen'] - yesterday_volume
-        ascend[i] = row['cierre'] > yesterday_stock
+        if yesterday['cierre'] == 0:
+            vcierre[i] = 0
+        else:
+            vcierre[i] = (row['cierre'] - yesterday['cierre']) / yesterday['cierre']
+            
+        if yesterday['apertura'] == 0:
+            vapertura[i] = 0
+        else:
+            vapertura[i] = (row['apertura'] - yesterday['apertura']) / yesterday['apertura']    
+        
+        if yesterday['volumen'] == 0:
+            vvolume[i] = 0
+        else:    
+            vvolume[i] = (row['volumen'] - yesterday['volumen']) / yesterday['volumen']
+            
+        if  yesterday['maximo'] == 0:
+            vmax[i] = 0
+        else:
+            vmax[i] = (row['maximo'] - yesterday['maximo']) / yesterday['maximo']
+            
+        if yesterday['minimo'] == 0:
+            vmin[i] = 0
+        else:
+            vmin[i] = (row['maximo'] - yesterday['minimo']) / yesterday['minimo']
+        
         variab[i] = row['maximo']-row['minimo']
-        variabp[i] = variab[i]/row['cierre']
+        
+        if (yesterday['maximo']-yesterday['minimo']) == 0:
+            vvariab[i] = 0
+        else:
+            vvariab[i] = (row['maximo']-row['minimo']) /  (yesterday['maximo']-yesterday['minimo'])
 
-        yesterday_stock = row['cierre']
-        yesterday_volume = row['volumen']
         
         if (reference_index != None) and (i > 1):
-            good[i] = evolution[i] - (reference_index[row['fecha']]['cierre']-reference_index[yesterday_date]['cierre'])
+            good[i] = vcierre[i] - (reference_index['vcierre'])
         
-        yesterday_date = row['fecha']
+        yesterday = row
 
     stock_values['var'] = variab
-    stock_values['varp'] = variabp
-    stock_values['asc'] = ascend
-    stock_values['evl'] = evolution
-    stock_values['vch'] = vol_change
-    stock_values['ind'] = good
+    stock_values['vvar'] = vvariab
+    stock_values['vcierre'] = vcierre
+    stock_values['vapertura'] = vapertura
+    stock_values['vmax'] = vmax
+    stock_values['vmin'] = vmin
+    stock_values['vvolumen'] = vvolume
+    
+    if reference_index != None:
+        stock_values['good'] = good
 
 def load_online_data(ticker, schema=None, start=None, end=None, provider='quandl'):
     '''
