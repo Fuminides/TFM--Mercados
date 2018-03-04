@@ -14,17 +14,6 @@ from sklearn.pipeline import make_pipeline
 from scipy import stats
 
 
-
-
-def regresion_polinomial(X,y, degree=2):
-    '''
-    Adjust polynomic model to data. (Might be used to smooth data)
-    '''
-    model = make_pipeline(PolynomialFeatures(degree), linear_model.LinearRegression())
-    model.fit(X, y)
-    
-    return model
-    
 def locate_local_minmax(series):
     '''
     Return the index for the local max and min points located in the series.
@@ -79,15 +68,38 @@ def extract_features(data, f,l):
     '''
     Extract features from an interval in a dataset
     '''
-    return np.array(stats.kurtosis(data[f:l]))
+    rows = data.iloc[f:l,:]
+    rows = filter_numerical(rows)
+    medias = rows.mean(axis=0)
     
-def similarity(f1,f2):
+    absolutos = medias[["apertura", "maximo", "minimo", "cierre", "volumen", "var"]]
+    tendencias = medias[["vapertura", "vmax", "vmin", "vcierre", "vvolumen", "vvar"]]
+    
+    return [absolutos, tendencias]
+    
+def distance(f1,f2):
     '''
-    Computes the average of the differences between two vectors.
+    Computes the differences between two segments.
     '''
-    return np.mean(f1-f2)
+    abs1 = f1[0]
+    abs2 = f2[0]
+    
+    ten1 = f1[1]
+    ten2 = f2[1]
+    
+    dabs = np.max(np.abs(abs1 - abs2) / abs2)
+    dten = np.max(np.abs(ten1 - ten2) / ten2)
+    
+    return np.max(dabs, dten)
 
-def valid_segment(data, intervalo, similarity_function, threshold, montecarlo=4):
+def filter_numerical(df):
+    '''
+    Returns a data frame only with the financial numerical values.
+    (apertura, cierre, minimo, maximo, volumen)
+    '''
+    return df.drop(["ticker", "fecha"], axis=1)
+
+def valid_segment(data, intervalo, distance, threshold, montecarlo=4):
     '''
     Returns true only if the designated segment is considered to be valid.
     It samples some subsegments and comparates their features with a distance function.
@@ -123,14 +135,14 @@ def valid_segment(data, intervalo, similarity_function, threshold, montecarlo=4)
         elif r12>r22:
            features2 = extract_features(data, r22,r12)
                
-        good = similarity_function(features1, features2) < threshold
+        good = distance(features1, features2) < threshold
 
         if not good:
             return False
     
     return True
     
-def segmentate(intervalo, data, similar_function, threshold, montecarlo=2):
+def segmentate(intervalo, data, distance_function, threshold, montecarlo=2):
     '''
     Given set of data, it divides it into segments according to a distance function.
     It uses a interval of numbers of the original data. It is recommended for small parts
@@ -145,7 +157,7 @@ def segmentate(intervalo, data, similar_function, threshold, montecarlo=2):
     last = intervalo[1]
     intervals = []
     
-    if valid_segment(data, intervalo, similar_function, threshold, montecarlo):
+    if valid_segment(data, intervalo, distance_function, threshold, montecarlo):
         #If this is a valid segment, it finishes
         intervals.append(intervalo)
     else:
@@ -155,7 +167,7 @@ def segmentate(intervalo, data, similar_function, threshold, montecarlo=2):
             success = False     
             while not success:
                 new_interval = [last_check, random.randint(last_check+1, last)]
-                success = valid_segment(data, new_interval, similar_function, threshold, montecarlo)
+                success = valid_segment(data, new_interval, distance_function, threshold, montecarlo)
                 
                 if success:
                     #We have found a valid segment, we append it to the list of segments
@@ -164,7 +176,7 @@ def segmentate(intervalo, data, similar_function, threshold, montecarlo=2):
                 
     return intervals
 
-def join_segments(data, o_segments, similarity, threshold):
+def join_segments(data, o_segments, distance, threshold):
     '''
     Joins segments which are very similar and adjacent. That is, segments which are
     in reality just one.
@@ -182,7 +194,7 @@ def join_segments(data, o_segments, similarity, threshold):
         
         f2 = extract_features(data, first2, last2)
         
-        same = similarity(f1,f2) < threshold
+        same = distance(f1,f2) < threshold
         
         if same:
             segments[i+1][0] = first

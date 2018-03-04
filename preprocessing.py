@@ -114,7 +114,84 @@ def normalize_data_frame(df, norm="mean"):
         normalized_df=(df-mini)/(maxi-mini)
         
         return [normalized_df, mini, maxi]
+
+def augment_data(stock_values, reference_index=None):
+    '''
+    Given a financial data_frame it creates the new derived atributes:
+        -Variability: difference between min and max value that day.
+        -Percentaje variability: variability divided by the stock price
+        -Ascend: true if the value today is more valuable than yesterday.
+        -Evolution: the diference between yesterday price and today's
+        -Index: difference between than it's reference index.
+        -Volume change: the difference between the number of stock sold the
+                        day before and the next one.
+        -WIP
+    '''
+    variab = np.zeros(stock_values.shape[0])
+    vvariab = np.zeros(stock_values.shape[0])
+    vcierre = np.zeros(stock_values.shape[0])
+    vapertura = np.zeros(stock_values.shape[0])
+    vvolume = np.zeros(stock_values.shape[0])
+    vmax = np.zeros(stock_values.shape[0])
+    vmin = np.zeros(stock_values.shape[0])
+
+    if reference_index != None:
+        good = np.zeros(stock_values.shape[0])
+
+    yesterday = stock_values.iloc[0]
     
+    for i in np.arange(stock_values.shape[0]):
+        row = stock_values.iloc[i]
+
+        if yesterday['cierre'] == 0:
+            vcierre[i] = 0
+        else:
+            vcierre[i] = (row['cierre'] - yesterday['cierre']) / yesterday['cierre']
+            
+        if yesterday['apertura'] == 0:
+            vapertura[i] = 0
+        else:
+            vapertura[i] = (row['apertura'] - yesterday['apertura']) / yesterday['apertura']    
+        
+        if yesterday['volumen'] == 0:
+            vvolume[i] = 0
+        else:    
+            vvolume[i] = (row['volumen'] - yesterday['volumen']) / yesterday['volumen']
+            
+        if  yesterday['maximo'] == 0:
+            vmax[i] = 0
+        else:
+            vmax[i] = (row['maximo'] - yesterday['maximo']) / yesterday['maximo']
+            
+        if yesterday['minimo'] == 0:
+            vmin[i] = 0
+        else:
+            vmin[i] = (row['maximo'] - yesterday['minimo']) / yesterday['minimo']
+        
+        variab[i] = row['maximo']-row['minimo']
+        
+        if (yesterday['maximo']-yesterday['minimo']) == 0:
+            vvariab[i] = 0
+        else:
+            vvariab[i] = ((row['maximo']-row['minimo']) - (yesterday['maximo']-yesterday['minimo'])) /  (yesterday['maximo']-yesterday['minimo'])
+
+        
+        if (reference_index != None) and (i > 1):
+            good[i] = vcierre[i] - (reference_index['vcierre'])
+        
+        yesterday = row
+
+    stock_values['var'] = variab
+    stock_values['vvar'] = vvariab
+    stock_values['vcierre'] = vcierre
+    stock_values['vapertura'] = vapertura
+    stock_values['vmax'] = vmax
+    stock_values['vmin'] = vmin
+    stock_values['vvolumen'] = vvolume
+    
+    if reference_index != None:
+        stock_values['good'] = good
+        
 #################
 ##FILTERS       #
 #################
