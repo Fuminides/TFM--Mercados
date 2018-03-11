@@ -17,12 +17,14 @@ def full_preprocess(df):
     Fills empty data, crops outliers using bollinger bands and creates new variables in
     the data frame.
     '''
-    fill_dates(df)
+    df = fill_dates(df)
     impute_missing(df)
     for i in ['apertura', 'cierre', 'minimo', 'maximo', 'volumen']:    
         crop_outliers(df, i)
-    augment_data(df)
     filter_data_frame(df)
+    augment_data(df)
+    
+    return df
     
     
     
@@ -55,6 +57,7 @@ def fill_dates(df):
             df.loc[fecha, 'ticker'] = ticker
     
     df = df.sort_index()
+    return df
     
     
 def impute_missing(df):
@@ -325,7 +328,4 @@ def low_filter(data, frac=0.025, it=0):
     Applies lowess filter to the data.
     '''
     return lowess(data, range(len(data)), is_sorted=True, frac=frac, it=it)[:,1]
-    
-            
-        
             

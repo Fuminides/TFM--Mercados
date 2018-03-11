@@ -4,16 +4,19 @@ Created on Tue Jan 16 12:17:59 2018
 
 @author: Javier Fumanal Idocin
 """
-
 import numpy as np
 import random
 import progressbar
 
-from sklearn import linear_model
-from sklearn.preprocessing import PolynomialFeatures
-from sklearn.pipeline import make_pipeline
-from scipy import stats
+from joblib import delayed, Parallel, cpu_count
 
+def _num_after_point(x):
+    for i in range(10):
+        comp = 0.1**i
+        if comp <= x:
+            return i
+    return 10
+        
 
 def locate_local_minmax(series):
     '''
@@ -97,7 +100,7 @@ def distance(f1,f2):
     dten[dten== -np.inf] = 0
     dten = np.max(dten)
     
-    return np.max([dabs, dten])
+    return np.max([dabs*_num_after_point(dabs), dten*_num_after_point(dten)])
 
 def filter_numerical(df):
     '''
@@ -232,42 +235,44 @@ def segmentate_data_frame(df, montecarlo = 8, trh = 0.5):
     for i in maximals:
         rango = [inicio, i]
         subsegmentos = segmentate(rango, df, distance, 0.5, montecarlo)
-        res.append(subsegmentos)
+        res = res + subsegmentos #res.append(subsegmentos)
         index += 1
         bar.update(index)
         inicio = i
     
     bar.finish()
     
-    return join_segments(df, res, distance, trh)   
+    #return res
+    return join_segments(df, res, distance, trh)
+
+def _segmentate_subrange(i, maximals, df, distance, montecarlo, trh):
+    if i==0:
+        inicio=0
+    else:
+        inicio = maximals[i-1]
         
-            
+    final = maximals[i]
+    
+    rango = [inicio, final]
+    res = segmentate(rango, df, distance, trh, montecarlo)
+    
+    return res
+    
+def parallel_segmentate_data_frame(df, montecarlo = 8, trh = 0.5):
+    '''
+    Given a financial data frame, it gets segmentated according to standard parameters.
+    '''
+    cierre = df['cierre']
+    maxmin = locate_local_minmax(cierre)
+    maximals = environment_filter(maxmin, cierre, size=25)
+    
+    res = []
+    
+    iters = len(maximals)
+    ncpu = cpu_count()
+    segs = Parallel(n_jobs=ncpu, verbose=50)(delayed(_segmentate_subrange)(i,maximals,df,distance, montecarlo,trh) for i in range(iters))
+    res = []
+    for i in segs:
+        res = res + i
         
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
+    return join_segments(df, res, distance, trh)
