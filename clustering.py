@@ -7,6 +7,7 @@ Created on Tue Jan 16 12:17:59 2018
 
 import numpy as np
 import random
+import progressbar
 
 from sklearn import linear_model
 from sklearn.preprocessing import PolynomialFeatures
@@ -73,7 +74,7 @@ def extract_features(data, f,l):
     medias = rows.mean(axis=0)
     
     absolutos = medias[["apertura", "maximo", "minimo", "cierre", "volumen", "var"]]
-    tendencias = medias[["vapertura", "vmax", "vmin", "vcierre", "vvolumen", "vvar"]]
+    tendencias = medias[["vapertura", "vmax", "vmin", "vcierre", "vvolumen"]]
     
     return [absolutos, tendencias]
     
@@ -87,10 +88,16 @@ def distance(f1,f2):
     ten1 = f1[1]
     ten2 = f2[1]
     
-    dabs = np.max(np.abs(abs1 - abs2) / abs2)
-    dten = np.max(np.abs(ten1 - ten2) / ten2)
+    dabs = (np.abs(abs1 - abs2) / abs2)
+    dabs[dabs == np.inf] = 0
+    dabs[dabs == -np.inf] = 0
+    dabs = np.max(dabs)
+    dten = (np.abs(ten1 - ten2) / ten2)
+    dten[dten == np.inf] = 0
+    dten[dten== -np.inf] = 0
+    dten = np.max(dten)
     
-    return np.max(dabs, dten)
+    return np.max([dabs, dten])
 
 def filter_numerical(df):
     '''
@@ -206,9 +213,33 @@ def join_segments(data, o_segments, distance, threshold):
     res.append(segments[-1])
         
     return res
-        
-        
-        
+
+def segmentate_data_frame(df, montecarlo = 8, trh = 0.5):
+    '''
+    Given a financial data frame, it gets segmentated according to standard parameters.
+    '''
+    cierre = df['cierre']
+    maxmin = locate_local_minmax(cierre)
+    maximals = environment_filter(maxmin, cierre, size=25)
+    inicio = 0
+    res = []
+    bar = progressbar.ProgressBar()
+    bar.max_value = len(maximals)
+    bar.min_value = 0
+    bar.update(0)
+    index = 0
+    
+    for i in maximals:
+        rango = [inicio, i]
+        subsegmentos = segmentate(rango, df, distance, 0.5, montecarlo)
+        res.append(subsegmentos)
+        index += 1
+        bar.update(index)
+        inicio = i
+    
+    bar.finish()
+    
+    return join_segments(df, res, distance, trh)   
         
             
         

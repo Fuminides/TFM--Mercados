@@ -12,6 +12,20 @@ from scipy.signal import butter, filtfilt
 from statsmodels.nonparametric.smoothers_lowess import lowess
 from math import factorial
 
+def full_preprocess(df):
+    '''
+    Fills empty data, crops outliers using bollinger bands and creates new variables in
+    the data frame.
+    '''
+    fill_dates(df)
+    impute_missing(df)
+    for i in ['apertura', 'cierre', 'minimo', 'maximo', 'volumen']:    
+        crop_outliers(df, i)
+    augment_data(df)
+    filter_data_frame(df)
+    
+    
+    
 def _number_to_date(number_date):
     return str(number_date)[:10]
 
@@ -24,7 +38,7 @@ def _dates_to_string(colum_dates):
 
 def fill_dates(df):
     '''
-    Fill the gaps in missing/non working days with linear interpolation.
+    Fill the gaps in missing/non working days with closer existing value.
     '''
     fechas_o = df.index.values
     inicio = fechas_o[0]
@@ -42,7 +56,6 @@ def fill_dates(df):
     
     df = df.sort_index()
     
-    return df
     
 def impute_missing(df):
     '''
