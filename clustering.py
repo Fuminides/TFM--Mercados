@@ -11,6 +11,12 @@ import progressbar
 from joblib import delayed, Parallel, cpu_count
 
 def _num_after_point(x):
+    '''
+    Given a float number x, it returns the number of zeroes between the
+    dot and the first non zero decimal number.
+    
+    x - a float number less than 1.
+    '''
     for i in range(10):
         comp = 0.1**i
         if comp <= x:
@@ -68,16 +74,22 @@ def environment_filter(maximals, series, size=10):
     
     return keep
  
-def extract_features(data, f,l):
+def extract_features(data, f,l, silence2=[]):
     '''
     Extract features from an interval in a dataset
     '''
     rows = data.iloc[f:l,:]
     rows = filter_numerical(rows)
     medias = rows.mean(axis=0)
-    
-    absolutos = medias[["apertura", "maximo", "minimo", "cierre", "volumen", "var"]]
-    tendencias = medias[["vapertura", "vmax", "vmin", "vcierre", "vvolumen"]]
+    if len(silence2) > 0:
+        silence = silence2.copy()
+        absolutos = medias[["apertura", "maximo", "minimo", "cierre", "volumen", "var"]].drop(silence, axis=0)
+        for i, val in enumerate(silence):
+            silence[i] = "v"+val
+        tendencias = medias[["vapertura", "vmax", "vmin", "vcierre", "vvolumen", "vvar"]].drop(silence, axis=0)
+    else:
+        absolutos = medias[["apertura", "maximo", "minimo", "cierre", "volumen", "var"]]
+        tendencias = medias[["vapertura", "vmax", "vmin", "vcierre", "vvolumen", "vvar"]]
     
     return [absolutos, tendencias]
     
@@ -102,6 +114,52 @@ def distance(f1,f2):
     
     return np.max([dabs*_num_after_point(dabs), dten*_num_after_point(dten)])
 
+def interpretable_distance(f1,f2, silence2=[]):
+    '''
+    Computes the differences between two segments, and gives the feature that causes the max distance.
+    '''
+    abs1 = f1[0]
+    abs2 = f2[0]
+    
+    ten1 = f1[1]
+    ten2 = f2[1]
+    absolutos = ["apertura", "maximo", "minimo", "cierre", "volumen", "var"]
+    tendencias = ["vapertura", "vmax", "vmin", "vcierre", "vvolumen", "vvar"]
+    if len(silence2)>0:
+        silence=silence2.copy()
+        absolutos = [x for x in absolutos if x not in silence]
+        for i, val in enumerate(silence):
+            silence[i] = "v"+val
+        
+        tendencias = [x for x in tendencias if x not in silence]
+        
+    max_distancia = 0.0
+    nombre = "Ninguno"
+    
+    for index, name in enumerate(absolutos):
+        val1 = abs1[index]
+        val2 = abs2[index]
+        dif = np.abs(val1 - val2) / val2
+        if (dif == np.inf) or (dif == -np.inf):
+            dif=0
+        dif = dif*_num_after_point(dif)
+        if max_distancia < dif:
+            max_distancia = dif
+            nombre = name
+    
+    for index, name in enumerate(tendencias):
+        val1 = ten1[index]
+        val2 = ten2[index]
+        dif = np.abs(val1 - val2) / val2
+        if (dif == np.inf) or (dif == -np.inf):
+            dif=0
+        dif = dif*_num_after_point(dif)
+        if max_distancia < dif:
+            max_distancia = dif
+            nombre = name
+    
+    return [max_distancia, nombre]
+
 def filter_numerical(df):
     '''
     Returns a data frame only with the financial numerical values.
@@ -109,7 +167,7 @@ def filter_numerical(df):
     '''
     return df.drop(["ticker", "fecha"], axis=1)
 
-def valid_segment(data, intervalo, distance, threshold, montecarlo=4):
+def valid_segment(data, intervalo, distance, threshold, montecarlo=4, silence=[]):
     '''
     Returns true only if the designated segment is considered to be valid.
     It samples some subsegments and comparates their features with a distance function.
@@ -129,9 +187,9 @@ def valid_segment(data, intervalo, distance, threshold, montecarlo=4):
             r21 = random.randint(first+1, last)
             
         if r21>r11:
-            features1 = extract_features(data, r11,r21)
+            features1 = extract_features(data, r11,r21, silence)
         elif r11>r21:
-            features1 = extract_features(data, r21,r11)
+            features1 = extract_features(data, r21,r11, silence)
         
         r12 = random.randint(first+1, last)
         r22 = random.randint(first+1, last)
@@ -141,9 +199,9 @@ def valid_segment(data, intervalo, distance, threshold, montecarlo=4):
             r22 = random.randint(first+1, last)
         
         if r22>r12:
-           features2 = extract_features(data, r12,r22)
+           features2 = extract_features(data, r12,r22, silence)
         elif r12>r22:
-           features2 = extract_features(data, r22,r12)
+           features2 = extract_features(data, r22,r12, silence)
                
         good = distance(features1, features2) < threshold
 
@@ -152,7 +210,7 @@ def valid_segment(data, intervalo, distance, threshold, montecarlo=4):
     
     return True
     
-def segmentate(intervalo, data, distance_function, threshold, montecarlo=2):
+def segmentate(intervalo, data, distance_function, threshold, montecarlo=2, silence=[]):
     '''
     Given set of data, it divides it into segments according to a distance function.
     It uses a interval of numbers of the original data. It is recommended for small parts
@@ -166,8 +224,7 @@ def segmentate(intervalo, data, distance_function, threshold, montecarlo=2):
     first = intervalo[0]
     last = intervalo[1]
     intervals = []
-    
-    if valid_segment(data, intervalo, distance_function, threshold, montecarlo):
+    if valid_segment(data, intervalo, distance_function, threshold, montecarlo, silence):
         #If this is a valid segment, it finishes
         intervals.append(intervalo)
     else:
@@ -177,7 +234,7 @@ def segmentate(intervalo, data, distance_function, threshold, montecarlo=2):
             success = False     
             while not success:
                 new_interval = [last_check, random.randint(last_check+1, last)]
-                success = valid_segment(data, new_interval, distance_function, threshold, montecarlo)
+                success = valid_segment(data, new_interval, distance_function, threshold, montecarlo, silence)
                 
                 if success:
                     #We have found a valid segment, we append it to the list of segments
@@ -186,38 +243,44 @@ def segmentate(intervalo, data, distance_function, threshold, montecarlo=2):
                 
     return intervals
 
-def join_segments(data, o_segments, distance, threshold):
+def join_segments(data, o_segments, distance, threshold, minimum_size=5, silence=[]):
     '''
     Joins segments which are very similar and adjacent. That is, segments which are
     in reality just one.
     '''
     res = []
     segments = o_segments.copy()
+    explanations = []
     for i in range(len(segments)-1):
         first = segments[i][0]
         last = segments[i][1]
         
-        f1 = extract_features(data, first, last)
+        f1 = extract_features(data, first, last, silence)
         
         first2 = segments[i+1][0]
         last2 = segments[i+1][1]
         
-        f2 = extract_features(data, first2, last2)
+        f2 = extract_features(data, first2, last2, silence)
         
-        same = distance(f1,f2) < threshold
+        if (last-first+1 < minimum_size) or (last2-first2+1 < minimum_size):
+            same = True
+        else:
+            cut = distance(f1,f2, silence)
+            same = cut[0] < threshold
         
         if same:
             segments[i+1][0] = first
             segments[i][1] = last2
             
         else:
+            explanations.append(cut)
             res.append([first, last])
             
     res.append(segments[-1])
         
-    return res
+    return res, explanations
 
-def segmentate_data_frame(df, montecarlo = 8, trh = 0.5):
+def segmentate_data_frame(df, montecarlo = 8, trh = 0.5, min_size=3, silence = []):
     '''
     Given a financial data frame, it gets segmentated according to standard parameters.
     '''
@@ -234,16 +297,15 @@ def segmentate_data_frame(df, montecarlo = 8, trh = 0.5):
     
     for i in maximals:
         rango = [inicio, i]
-        subsegmentos = segmentate(rango, df, distance, 0.5, montecarlo)
+        subsegmentos = segmentate(rango, df, distance, 0.5, montecarlo, silence)
         res = res + subsegmentos #res.append(subsegmentos)
         index += 1
         bar.update(index)
         inicio = i
     
     bar.finish()
-    
-    #return res
-    return join_segments(df, res, distance, trh)
+
+    return join_segments(df, res, interpretable_distance, trh, min_size, silence)
 
 def _segmentate_subrange(i, maximals, df, distance, montecarlo, trh):
     if i==0:
@@ -258,7 +320,7 @@ def _segmentate_subrange(i, maximals, df, distance, montecarlo, trh):
     
     return res
     
-def parallel_segmentate_data_frame(df, montecarlo = 8, trh = 0.5):
+def parallel_segmentate_data_frame(df, montecarlo = 8, trh = 0.5, silence=[]):
     '''
     Given a financial data frame, it gets segmentated according to standard parameters.
     '''
@@ -275,4 +337,4 @@ def parallel_segmentate_data_frame(df, montecarlo = 8, trh = 0.5):
     for i in segs:
         res = res + i
         
-    return join_segments(df, res, distance, trh)
+    return join_segments(df, res, interpretable_distance, trh, silence)
