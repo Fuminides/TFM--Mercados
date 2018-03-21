@@ -201,8 +201,8 @@ def augment_data(stock_values, reference_index=None):
     stock_values['vvar'] = vvariab
     stock_values['vcierre'] = vcierre
     stock_values['vapertura'] = vapertura
-    stock_values['vmax'] = vmax
-    stock_values['vmin'] = vmin
+    stock_values['vmaximo'] = vmax
+    stock_values['vminimo'] = vmin
     stock_values['vvolumen'] = vvolume
     
     if reference_index != None:

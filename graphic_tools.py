@@ -63,6 +63,7 @@ def full_plot(df, segmentos):
     
     A simple plotly plot thay creates a line plot with a variable from a data frame
     '''
+    invisibles = [True, True, True, True, True]
     lineas_divisorias = []
     escala = max(df.drop('volumen',axis=1).select_dtypes(include=[np.number]).max())
     for i in segmentos:
@@ -84,57 +85,108 @@ def full_plot(df, segmentos):
         
     cierre = go.Scatter(
         x=df['fecha'], # assign x as the dataframe column 'x'
-        y=df['cierre']
+        y=df['cierre'],
+        name = "Cierre"
     )
     apertura = go.Scatter(
         x=df['fecha'], # assign x as the dataframe column 'x'
-        y=df['apertura']
+        y=df['apertura'],
+        name = "Apertura"
     )
     
     minimo = go.Scatter(
         x=df['fecha'], # assign x as the dataframe column 'x'
-        y=df['minimo']
+        y=df['minimo'],
+        name = "Mínimo"
     )
     
     maximo = go.Scatter(
         x=df['fecha'], # assign x as the dataframe column 'x'
-        y=df['maximo']
+        y=df['maximo'],
+        name = "Máximo"
+        
     )
     
     volumen = go.Scatter(
         x=df['fecha'], # assign x as the dataframe column 'x'
-        y=df['volumen']/np.max(df['volumen']) * escala
+        y=df['volumen']/np.max(df['volumen']) * escala,
+        name = "Volumen"
     )
+    
+    vcierre = go.Scatter(
+        x=df['fecha'], # assign x as the dataframe column 'x'
+        y=df['vcierre'],
+        visible = "legendonly",
+        name = "Ev. Cierre",
+        opacity = 0
+    )
+    vapertura = go.Scatter(
+        x=df['fecha'], # assign x as the dataframe column 'x'
+        y=df['vapertura'],
+        visible = "legendonly",
+        opacity = 0,
+        name = "Ev. Apertura"
+    )
+    
+    vminimo = go.Scatter(
+        x=df['fecha'], # assign x as the dataframe column 'x'
+        y=df['vminimo'],
+        visible = "legendonly",
+        opacity = 0,
+        name = "Ev. Mínimo"
+    )
+    
+    vmaximo = go.Scatter(
+        x=df['fecha'], # assign x as the dataframe column 'x'
+        y=df['vmaximo'],
+        visible = "legendonly",
+        opacity = 0,
+        name = "Ev. Máximo"
+    )
+    
+    vvolumen = go.Scatter(
+        x=df['fecha'], # assign x as the dataframe column 'x'
+        y=df['vvolumen'],
+        visible = "legendonly",
+        opacity = 0,
+        name = "Ev. Volumen"
+    )
+    
     vtitle = 'Volumen (Factor de escala: ' + str(escala / np.max(df['volumen']))+ ')'
-    data = [cierre, apertura, minimo, maximo, volumen]
+    data = [cierre, apertura, minimo, maximo, volumen, vcierre, vapertura, vminimo, vmaximo, vvolumen]
     updatemenus = list([
     dict(type="buttons",
          active=-1,
-         buttons=list([   
-            dict(label = 'Cierre',
+         buttons=list([
+             dict(label = 'Todas',
+             method = 'update',
+             args = [{'visible': [True, True, True, True, True] + invisibles},
+                     {'title': 'Todos los valores'}]),
+            dict(label = 'Precio de Cierre',
                  method = 'update',
-                 args = [{'visible': [True, False, False, False, False]},
-                         {'title': 'Cierre'}]),
-            dict(label = 'Apertura',
+                 args = [{'visible': [True, False, False, False, False]+ invisibles},
+                         {'title': 'Precio de Cierre'}]),
+            dict(label = 'Precio de Apertura',
                  method = 'update',
-                 args = [{'visible': [False, True, False, False, False]},
-                         {'title': 'Apertura'}]),
-            dict(label = 'Mínimo',
+                 args = [{'visible': [False, True, False, False, False]+ invisibles},
+                         {'title': 'Precio de Apertura'}]),
+            dict(label = 'Precio Mínimo',
                  method = 'update',
-                 args = [{'visible': [False, False, True, False, False]},
-                         {'title': 'Minimo'}]),
-            dict(label = 'Máximo',
+                 args = [{'visible': [False, False, True, False, False]+ invisibles},
+                         {'title': 'Precio Mínimo'}]),
+            dict(label = 'Precio Máximo',
                  method = 'update',
-                 args = [{'visible': [False, False, False, True, False]},
-                         {'title': 'Maximo'}]),
+                 args = [{'visible': [False, False, False, True, False]+ invisibles},
+                         {'title': 'Precio Máximo'}]),
             dict(label = 'Volumen',
                  method = 'update',
-                 args = [{'visible': [False, False, False, False, True]},
+                 args = [{'visible': [False, False, False, False, True]+ invisibles},
                          {'title': vtitle}])
         ]),
     )
     ])
-    layout = dict(title='Financial records', showlegend=False,
+    nombre_grafo = 'Registro Financiero de ' + df['ticker'][0][df['ticker'][0].find("/")+1:]
+    layout = dict(title=nombre_grafo, showlegend=False,
               updatemenus=updatemenus,
               shapes=lineas_divisorias)
     fig = dict(data=data, layout=layout)
