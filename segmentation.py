@@ -109,7 +109,7 @@ def distance(f1,f2, penalizacion_orden=3):
     
     try:
         pens = ((1 + np.e**-(np.log10(abs(abs1-abs2))-penalizacion_orden)))
-        pens[pens.index != 'volumen'] = 0
+        pens[pens.index != 'volumen'] = 1
         dabs = dabs / pens
     except KeyError:
         dabs=dabs
@@ -297,7 +297,7 @@ def join_segments(data, o_segments, distance, threshold, minimum_size=5, silence
         
     return res, explanations
 
-def segmentate_data_frame(df, montecarlo = 8, trh = 0.5, min_size=3, silence = [], penalizacion_orden = 3):
+def segmentate_data_frame(df, montecarlo = 8, trh = 0.5, min_size=3, silence = [], penalizacion_orden = 3, verbose = False):
     '''
     Given a financial data frame, it gets segmentated according to standard parameters.
     '''
@@ -306,10 +306,11 @@ def segmentate_data_frame(df, montecarlo = 8, trh = 0.5, min_size=3, silence = [
     maximals = environment_filter(maxmin, cierre, size=25)
     inicio = 0
     res = []
-    bar = progressbar.ProgressBar()
-    bar.max_value = len(maximals)
-    bar.min_value = 0
-    bar.update(0)
+    if verbose:
+        bar = progressbar.ProgressBar()
+        bar.max_value = len(maximals)
+        bar.min_value = 0
+        bar.update(0)
     index = 0
     
     for i in maximals:
@@ -317,10 +318,13 @@ def segmentate_data_frame(df, montecarlo = 8, trh = 0.5, min_size=3, silence = [
         subsegmentos = segmentate(rango, df, distance, 0.5, montecarlo, silence, penalizacion_orden)
         res = res + subsegmentos #res.append(subsegmentos)
         index += 1
-        bar.update(index)
+        
+        if verbose:
+            bar.update(index)
+            
         inicio = i
-    
-    bar.finish()
+    if verbose:
+        bar.finish()
 
     return join_segments(df, res, interpretable_distance, trh, min_size, silence)
 
@@ -337,7 +341,7 @@ def _segmentate_subrange(i, maximals, df, distance, montecarlo, trh):
     
     return res
     
-def parallel_segmentate_data_frame(df, montecarlo = 8, trh = 0.5, min_size=3, silence=[],penalizacion_orden=3):
+def parallel_segmentate_data_frame(df, montecarlo = 8, trh = 0.5, min_size=3, silence=[],penalizacion_orden=3, verb = 50):
     '''
     Given a financial data frame, it gets segmentated according to standard parameters.
     '''
@@ -349,7 +353,7 @@ def parallel_segmentate_data_frame(df, montecarlo = 8, trh = 0.5, min_size=3, si
     
     iters = len(maximals)
     ncpu = cpu_count()
-    segs = Parallel(n_jobs=ncpu, verbose=50)(delayed(_segmentate_subrange)(i,maximals,df,distance, montecarlo,trh,penalizacion_orden) for i in range(iters))
+    segs = Parallel(n_jobs=ncpu, verbose=verb)(delayed(_segmentate_subrange)(i,maximals,df,distance, montecarlo,trh,penalizacion_orden) for i in range(iters))
     res = []
     for i in segs:
         res = res + i

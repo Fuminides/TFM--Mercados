@@ -55,11 +55,14 @@ def full_clustering(X, segmentos, n_clus = 3, silencio=[]):
     
     
 def clustering(X, n_clusters=3):
+    '''
+    Applies K-Means to a dataset given the number of clusters
+    '''
     return KMeans(n_clusters=2, random_state=0).fit(X)
     
 def hopkins_statistic(X, m=10):
     '''
-    Return the Hopkins statistic for clustering tendency given a data set.
+    Return the Hopkins statistic for clustering tendency in a data set.
     '''
     n = np.shape(X)[0]
     Y = random.sample(range(0, n, 1), m)
