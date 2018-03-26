@@ -95,7 +95,7 @@ def extract_features(data, f,l, silence2=[]):
     
     return [absolutos, tendencias]
     
-def distance(f1,f2, penalizacion_orden=3):
+def distance(f1,f2, vector_importancias, penalizacion_orden=3):
     '''
     Computes the differences between two segments.
     '''
@@ -116,15 +116,15 @@ def distance(f1,f2, penalizacion_orden=3):
     
     dabs[dabs == np.inf] = 0
     dabs[dabs == -np.inf] = 0
-    dabs = np.max(dabs)
+    dabs = np.max(dabs * vector_importancias[0:int(len(vector_importancias)/2)])
     dten = np.log10(np.abs(ten1 - ten2))+3 #Es * 1000 en el log
     dten[dten == np.inf] = 0
     dten[dten== -np.inf] = 0
-    dten = np.max(dten)
+    dten = np.max(dten * vector_importancias[int(len(vector_importancias)/2):])
     
     return np.max([dabs, dten])
 
-def interpretable_distance(f1,f2, silence2=[], pen_orden=3):
+def interpretable_distance(f1,f2, silence2=[], pen_orden=3, vector_importancias = [1,1,1,1,1,1, 1,1,1,1,1,1]):
     '''
     Computes the differences between two segments, and gives the feature that causes the max distance.
     '''
@@ -135,6 +135,7 @@ def interpretable_distance(f1,f2, silence2=[], pen_orden=3):
     ten2 = f2[1]
     absolutos = ["apertura", "maximo", "minimo", "cierre", "volumen", "var"]
     tendencias = ["vapertura", "vmaximo", "vminimo", "vcierre", "vvolumen", "vvar"]
+    
     if len(silence2)>0:
         silence=silence2.copy()
         absolutos = [x for x in absolutos if x not in silence]
@@ -147,12 +148,12 @@ def interpretable_distance(f1,f2, silence2=[], pen_orden=3):
     nombre = "Ninguno"
     
     for index, name in enumerate(absolutos):
-        val1 = abs1[index]
-        val2 = abs2[index]
-        #dif = np.abs(val1 - val2) / val2
+        val1 = abs1[index] * vector_importancias[index]
+        val2 = abs2[index] * vector_importancias[index]
         dif = (np.abs(val1 - val2) / val2)
+        
         if name == 'volumen':
-            pens = ((1 + np.e**-(np.log10(abs(val1-val2))-pen_orden)))
+            pens = (1 + np.e**-(np.log10( abs(val1-val2) ) - pen_orden))
             dif = dif / pens            
 
         if (dif == np.inf) or (dif == -np.inf):
@@ -164,8 +165,8 @@ def interpretable_distance(f1,f2, silence2=[], pen_orden=3):
             nombre = name
     
     for index, name in enumerate(tendencias):
-        val1 = ten1[index]
-        val2 = ten2[index]
+        val1 = ten1[index] * vector_importancias[index]
+        val2 = ten2[index] * vector_importancias[index]
         dif = np.log10(np.abs(val1 - val2))+3
 
         if (dif == np.inf) or (dif == -np.inf):
@@ -184,7 +185,7 @@ def filter_numerical(df):
     '''
     return df.drop(["ticker", "fecha"], axis=1)
 
-def valid_segment(data, intervalo, distance, threshold, montecarlo=4, silence=[], penalizacion_orden=3):
+def valid_segment(data, intervalo, distance, threshold, montecarlo=4, silence=[], penalizacion_orden=3, vector_importancias = [1,1,1,1,1,1,1,1,1,1,1,1]):
     '''
     Returns true only if the designated segment is considered to be valid.
     It samples some subsegments and comparates their features with a distance function.
@@ -220,14 +221,14 @@ def valid_segment(data, intervalo, distance, threshold, montecarlo=4, silence=[]
         elif r12>r22:
            features2 = extract_features(data, r22,r12, silence)
                
-        good = distance(features1, features2, penalizacion_orden) < threshold
+        good = distance(features1, features2, vector_importancias, penalizacion_orden) < threshold
 
         if not good:
             return False
     
     return True
     
-def segmentate(intervalo, data, distance_function, threshold, montecarlo=2, silence=[], pen = 3):
+def segmentate(intervalo, data, distance_function, threshold, montecarlo=2, silence=[], pen = 3, vector_importancias = [1,1,1,1,1,1,1,1,1,1,1,1]):
     '''
     Given set of data, it divides it into segments according to a distance function.
     It uses a interval of numbers of the original data. It is recommended for small parts
@@ -241,7 +242,7 @@ def segmentate(intervalo, data, distance_function, threshold, montecarlo=2, sile
     first = intervalo[0]
     last = intervalo[1]
     intervals = []
-    if valid_segment(data, intervalo, distance_function, threshold, montecarlo, silence, pen):
+    if valid_segment(data, intervalo, distance_function, threshold, montecarlo, silence, pen, vector_importancias):
         #If this is a valid segment, it finishes
         intervals.append(intervalo)
     else:
@@ -251,7 +252,7 @@ def segmentate(intervalo, data, distance_function, threshold, montecarlo=2, sile
             success = False     
             while not success:
                 new_interval = [last_check, random.randint(last_check+1, last)]
-                success = valid_segment(data, new_interval, distance_function, threshold, montecarlo, silence, pen)
+                success = valid_segment(data, new_interval, distance_function, threshold, montecarlo, silence, pen, vector_importancias)
                 
                 if success:
                     #We have found a valid segment, we append it to the list of segments
@@ -260,7 +261,7 @@ def segmentate(intervalo, data, distance_function, threshold, montecarlo=2, sile
                 
     return intervals
 
-def join_segments(data, o_segments, distance, threshold, minimum_size=5, silence=[], penalizacion_orden=3):
+def join_segments(data, o_segments, distance, threshold, minimum_size=5, silence=[], penalizacion_orden=3, vector_importancias = [1,1,1,1,1,1,1,1,1,1,1,1]):
     '''
     Joins segments which are very similar and adjacent. That is, segments which are
     in reality just one.
@@ -282,7 +283,7 @@ def join_segments(data, o_segments, distance, threshold, minimum_size=5, silence
         if (last-first+1 < minimum_size) or (last2-first2+1 < minimum_size):
             same = True
         else:
-            cut = distance(f1,f2, silence, penalizacion_orden)
+            cut = distance(f1,f2, silence, penalizacion_orden, vector_importancias)
             same = cut[0] < threshold
         
         if same:
@@ -297,7 +298,7 @@ def join_segments(data, o_segments, distance, threshold, minimum_size=5, silence
         
     return res, explanations
 
-def segmentate_data_frame(df, montecarlo = 8, trh = 0.5, min_size=3, silence = [], penalizacion_orden = 3, verbose = False):
+def segmentate_data_frame(df, montecarlo = 8, trh = 0.5, min_size=3, silence = [], penalizacion_orden = 3, verbose = False, vector_importancias = [1,1,1,1,1,1,1,1,1,1,1,1]):
     '''
     Given a financial data frame, it gets segmentated according to standard parameters.
     '''
@@ -315,7 +316,7 @@ def segmentate_data_frame(df, montecarlo = 8, trh = 0.5, min_size=3, silence = [
     
     for i in maximals:
         rango = [inicio, i]
-        subsegmentos = segmentate(rango, df, distance, 0.5, montecarlo, silence, penalizacion_orden)
+        subsegmentos = segmentate(rango, df, distance, 0.5, montecarlo, silence, penalizacion_orden, vector_importancias)
         res = res + subsegmentos #res.append(subsegmentos)
         index += 1
         
@@ -326,7 +327,7 @@ def segmentate_data_frame(df, montecarlo = 8, trh = 0.5, min_size=3, silence = [
     if verbose:
         bar.finish()
 
-    return join_segments(df, res, interpretable_distance, trh, min_size, silence)
+    return join_segments(df, res, interpretable_distance, trh, min_size, silence, penalizacion_orden= penalizacion_orden,vector_importancias = vector_importancias)
 
 def _segmentate_subrange(i, maximals, df, distance, montecarlo, trh):
     if i==0:
@@ -341,7 +342,7 @@ def _segmentate_subrange(i, maximals, df, distance, montecarlo, trh):
     
     return res
     
-def parallel_segmentate_data_frame(df, montecarlo = 8, trh = 0.5, min_size=3, silence=[],penalizacion_orden=3, verb = 50):
+def parallel_segmentate_data_frame(df, montecarlo = 8, trh = 0.5, min_size=3, silence=[],penalizacion_orden=3, verb = 50, vector_importancias = [1,1,1,1,1,1,1,1,1,1,1,1]):
     '''
     Given a financial data frame, it gets segmentated according to standard parameters.
     '''
@@ -358,4 +359,4 @@ def parallel_segmentate_data_frame(df, montecarlo = 8, trh = 0.5, min_size=3, si
     for i in segs:
         res = res + i
         
-    return join_segments(df, res, interpretable_distance, trh, min_size, silence)
+    return join_segments(df, res, interpretable_distance, trh, min_size, silence , vector_importancias)
