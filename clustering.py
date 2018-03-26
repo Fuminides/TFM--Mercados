@@ -10,22 +10,30 @@ from sklearn.neighbors import NearestNeighbors
 import pandas as pd
 
 from sklearn.cluster import KMeans
+from sklearn import preprocessing
 
 def filter_numerical(df):
     '''
     Returns a data frame only with the financial numerical values.
     (apertura, cierre, minimo, maximo, volumen)
     '''
-    return df.drop(["ticker", "fecha"], axis=1)
-
-def extract_features(data, f,l, silence2=[]):
+    try: 
+        return df.drop(["ticker", "fecha"], axis=1)
+    except ValueError:
+        return df
+    
+def extract_features(data, f,l, silence2=[], pesos = [1,1,1,1,1,1,1,1,1,1,1,1]):
     '''
     Extract features from an interval in a dataset
     '''
     rows = data.iloc[f:l,:]
     rows = filter_numerical(rows)
     medias = rows.mean(axis=0)
-    medias['vvolumen'] = medias['vvolumen']*0.01
+    try:
+        medias['vvolumen'] = medias['vvolumen']*0.01
+    except KeyError:
+        pass
+    
     if len(silence2) > 0:
         silence = silence2.copy()
         absolutos = medias[["apertura", "maximo", "minimo", "cierre", "volumen", "var"]].drop(silence, axis=0)
@@ -36,16 +44,13 @@ def extract_features(data, f,l, silence2=[]):
         absolutos = medias[["apertura", "maximo", "minimo", "cierre", "volumen", "var"]]
         tendencias = medias[["vapertura", "vmaximo", "vminimo", "vcierre", "vvolumen", "vvar"]]
     
-    return [absolutos, tendencias]
+    return [absolutos * pesos[0:int(len(pesos)/2)], tendencias * pesos[int(len(pesos)/2)]]
 
-def full_clustering(X, segmentos, n_clus = 3, silencio=[]):
-    segments_df = pd.DataFrame()
-    for seg in segmentos:
-        inicio = seg[0]
-        final = seg[1]
-        
-        f = extract_features(X,inicio, final, silencio)
-        segments_df = segments_df.append(f[0].append(f[1]))
+def full_clustering(X, segmentos, n_clus = 3, silencio=[], pesos = [1,1,1,1,1,1, 1,1,1,1,1,1]):
+    names = X.columns.values
+    segments_df = apply_segmentation(X, segmentos, silencio, pesos)
+    segments_df = minmax_norm(segments_df)
+    segments_df.columns = names
     
     fit = clustering(segments_df, n_clus)
     
@@ -88,5 +93,25 @@ def hopkins_statistic(X, m=10):
  
     return H
     
-    
-    
+def apply_segmentation(X, segmentos, silencio=[], pesos = [1,1,1,1,1,1, 1,1,1,1,1,1]):
+    '''
+    Returns the features of each segment in the dataset.
+    '''
+    segments_df = pd.DataFrame()
+    for seg in segmentos:
+        inicio = seg[0]
+        final = seg[1]
+        
+        f = extract_features(X,inicio, final, silencio, pesos)
+        segments_df = segments_df.append(f[0].append(f[1]), ignore_index = True)
+        
+    return segments_df
+
+def minmax_norm(df):
+    '''
+    '''
+    df = filter_numerical(df)
+    x = df.values #returns a numpy array
+    min_max_scaler = preprocessing.MinMaxScaler()
+    x_scaled = min_max_scaler.fit_transform(x)
+    return pd.DataFrame(x_scaled)     

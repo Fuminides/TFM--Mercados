@@ -193,5 +193,8 @@ def full_plot(df, segmentos):
     
     return py.plot(fig, filename=df['ticker'][0].replace('/', "_"))
 
-    
+
+def plot_segments(df, segments):
+    '''
+    '''
     
