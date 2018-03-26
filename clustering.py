@@ -45,7 +45,7 @@ def full_clustering(X, segmentos, n_clus = 3, silencio=[]):
         final = seg[1]
         
         f = extract_features(X,inicio, final, silencio)
-        segments_df = segments_df.append(f)
+        segments_df = segments_df.append(f[0].append(f[1]))
     
     fit = clustering(segments_df, n_clus)
     
@@ -66,7 +66,11 @@ def hopkins_statistic(X, m=10):
     '''
     n = np.shape(X)[0]
     Y = random.sample(range(0, n, 1), m)
-    nbrs = NearestNeighbors(n_neighbors=1).fit(X.values)
+    
+    if type(X)==pd.core.frame.DataFrame:
+        nbrs = NearestNeighbors(n_neighbors=1).fit(X.values)
+    else:
+         nbrs = NearestNeighbors(n_neighbors=1).fit(X)
     
     ujd = []
     wjd = []
