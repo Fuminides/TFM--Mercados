@@ -9,6 +9,7 @@ import pandas
 import plotly.plotly as py
 import plotly.graph_objs as go
 import numpy as np
+import pylab
 
 from ggplot import ggplot, geom_line, aes, xlab,ylab, ggtitle
 from matplotlib import colors as mcolors
@@ -58,14 +59,19 @@ def plotly_line_plot(df, columna):
     ]   
     return py.plot(data, filename=df['ticker'][0].replace('/', "_")+ columna)
 
-def full_plot(df, segmentos):
+def full_plot(df, segmentos, clusters=[]):
     '''
-    
-    A simple plotly plot thay creates a line plot with a variable from a data frame
+    A plotly plot thay creates a line plot with a variable from a data frame
     '''
     invisibles = [True, True, True, True, True]
     lineas_divisorias = []
-    escala = max(df.drop('volumen',axis=1).select_dtypes(include=[np.number]).max())
+    
+    if len(clusters) == 0:
+        escala = max(df.drop('volumen',axis=1).select_dtypes(include=[np.number]).max())
+    else:
+        escala = max(df.drop(['volumen','cluster'],axis=1).select_dtypes(include=[np.number]).max())
+    
+        
     for i in segmentos:
         coordenada = i[1]
        # Line Vertical
@@ -86,31 +92,77 @@ def full_plot(df, segmentos):
     cierre = go.Scatter(
         x=df['fecha'], # assign x as the dataframe column 'x'
         y=df['cierre'],
-        name = "Cierre"
+        name = "Cierre",
+        mode='markers',
+        line=dict(
+            color = clusters,
+            colorscale = 'Pastel2',
+        ),
+        marker=dict(
+            color = clusters,
+            colorscale = 'Pastel2',
+        )
     )
+        
     apertura = go.Scatter(
         x=df['fecha'], # assign x as the dataframe column 'x'
         y=df['apertura'],
-        name = "Apertura"
+        name = "Apertura",
+        mode='markers',
+        line=dict(
+            color = clusters,
+            colorscale = 'Pastel2',
+        ),
+        marker=dict(
+            color = clusters,
+            colorscale = 'Pastel2',
+        )
     )
     
     minimo = go.Scatter(
         x=df['fecha'], # assign x as the dataframe column 'x'
         y=df['minimo'],
-        name = "Mínimo"
+        name = "Mínimo",
+        mode='markers',
+        line=dict(
+            color = clusters,
+            colorscale = 'Pastel2',
+        ),
+        marker=dict(
+            color = clusters,
+            colorscale = 'Pastel2',
+        )
     )
     
     maximo = go.Scatter(
         x=df['fecha'], # assign x as the dataframe column 'x'
         y=df['maximo'],
-        name = "Máximo"
+        name = "Máximo",
+        mode='markers',
+        line=dict(
+            color = clusters,
+            colorscale = 'Pastel2',
+        ),
+        marker=dict(
+            color = clusters,
+            colorscale = 'Pastel2',
+        )
         
     )
     
     volumen = go.Scatter(
         x=df['fecha'], # assign x as the dataframe column 'x'
         y=df['volumen']/np.max(df['volumen']) * escala,
-        name = "Volumen"
+        name = "Volumen",
+        mode='markers',
+        line=dict(
+            color = clusters,
+            colorscale = 'Pastel2',
+        ),
+        marker=dict(
+            color = clusters,
+            colorscale = 'Pastel2',
+        )
     )
     
     vcierre = go.Scatter(

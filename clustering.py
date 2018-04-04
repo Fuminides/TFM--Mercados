@@ -47,8 +47,10 @@ def extract_features(data, f,l, silence2=[], pesos = [1,1,1,1,1,1,1,1,1,1,1,1]):
     return [absolutos * pesos[0:int(len(pesos)/2)], tendencias * pesos[int(len(pesos)/2)]]
 
 def full_clustering(X, segmentos, n_clus = 3, silencio=[], pesos = [1,1,1,1,1,1, 1,1,1,1,1,1]):
-    names = X.columns.values
+    '''
+    '''
     segments_df = apply_segmentation(X, segmentos, silencio, pesos)
+    names = segments_df.columns.values
     segments_df = minmax_norm(segments_df)
     segments_df.columns = names
     
@@ -57,7 +59,21 @@ def full_clustering(X, segmentos, n_clus = 3, silencio=[], pesos = [1,1,1,1,1,1,
     segments_df['cluster'] = fit.labels_
     
     return segments_df
+
+def cluster_points(X, segmentos, clusters):
+    '''
+    '''
+    rows = X.shape[0]
+    res = [0]*rows
+    for index, seg in enumerate(segmentos):
+        inicio = seg[0]
+        fin = seg[1]
+        clus = clusters[index]
+        res[inicio:fin] = [clus]*(fin-inicio)
+        
+    X['cluster'] = res
     
+    return X
     
 def clustering(X, n_clusters=3):
     '''
