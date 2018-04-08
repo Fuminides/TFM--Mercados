@@ -108,7 +108,7 @@ def distance(f1,f2, vector_importancias, penalizacion_orden=3):
     dabs = (np.abs(abs1 - abs2) / abs2)
     
     try:
-        pens = ((1 + np.e**-(np.log10(abs(abs1-abs2))-penalizacion_orden)))
+        pens = (1 + np.e**-(np.log10(abs(abs1-abs2))-penalizacion_orden))
         pens[pens.index != 'volumen'] = 1
         dabs = dabs / pens
     except KeyError:
@@ -183,7 +183,7 @@ def filter_numerical(df):
     Returns a data frame only with the financial numerical values.
     (apertura, cierre, minimo, maximo, volumen)
     '''
-    return df.drop(["ticker", "fecha"], axis=1)
+    return df.drop(["ticker", "fecha"], axis=0)
 
 def valid_segment(data, intervalo, distance, threshold, montecarlo=4, silence=[], penalizacion_orden=3, vector_importancias = [1,1,1,1,1,1,1,1,1,1,1,1]):
     '''
@@ -360,3 +360,16 @@ def parallel_segmentate_data_frame(df, montecarlo = 8, trh = 0.5, min_size=3, si
         res = res + i
         
     return join_segments(df, res, interpretable_distance, trh, min_size, silence , vector_importancias)
+
+def get_segments(X, segments):
+    '''
+    '''
+    resultado = []
+    for segmento in segments:
+        inicio = segmento[0]
+        final = segmento[1]
+        
+        resultado.append(X.iloc[inicio:final,:].drop(['fecha','ticker'], axis=1).values)
+    
+    return resultado
+    

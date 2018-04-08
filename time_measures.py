@@ -21,7 +21,6 @@ def exec_time(func, args, execuctions=10):
         final = time.process_time()
         
         times[i] = final - inicio
-        
     return sum(times)/len(times)
 
 def exec_ev(func, list_args, n=5):

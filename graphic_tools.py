@@ -29,7 +29,7 @@ def plot_line(X,y,title=None,labelx=None,labely=None,save=False, colors=None):
     for i in range(y.shape[1]):
         df[str(i)] = y.iloc[:,i].values
     
-    if colors==None:
+    if colors is None:
         colors = list(dict(mcolors.BASE_COLORS, **mcolors.CSS4_COLORS).keys())
 
     df = df.iloc[0:df.shape[0]-1, :]    

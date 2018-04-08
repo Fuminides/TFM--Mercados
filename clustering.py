@@ -123,6 +123,20 @@ def apply_segmentation(X, segmentos, silencio=[], pesos = [1,1,1,1,1,1, 1,1,1,1,
         
     return segments_df
 
+def apply_clustering(X, segmentos, clusters, asociaciones):
+    '''
+    '''
+    X['cluster'] = 0
+    for cluster in clusters:
+        for i_segment in asociaciones[cluster]:
+            seg = segmentos[i_segment]
+            inicio = seg[0]
+            final = seg[1]
+            
+            X['cluster'].iloc[inicio:final] = cluster
+        
+    return X
+        
 def minmax_norm(df):
     '''
     '''
