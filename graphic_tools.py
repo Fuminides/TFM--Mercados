@@ -36,7 +36,10 @@ def plot_line(X,y,title=None,labelx=None,labely=None,save=False, colors=None):
     p = ggplot(df, aes(x='X'))
     
     for i in range(y.shape[1]):
-         p = p + geom_line(aes(y=str(i),color = colors[i]))
+         if colors not in X.columns:
+            p = p + geom_line(aes(y=str(i),color = colors[i]))
+        else:
+            p = p + geom_point(aes(y=str(i),color = colors))
     
     p = p + xlab(labelx) + ylab(labely) + ggtitle(title)
     
