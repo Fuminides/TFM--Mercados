@@ -183,7 +183,7 @@ def filter_numerical(df):
     Returns a data frame only with the financial numerical values.
     (apertura, cierre, minimo, maximo, volumen)
     '''
-    return df.drop(["ticker", "fecha"], axis=0)
+    return df.drop(["ticker", "fecha"], axis=1)
 
 def valid_segment(data, intervalo, distance, threshold, montecarlo=4, silence=[], penalizacion_orden=3, vector_importancias = [1,1,1,1,1,1,1,1,1,1,1,1]):
     '''

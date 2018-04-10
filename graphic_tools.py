@@ -11,8 +11,11 @@ import plotly.graph_objs as go
 import numpy as np
 import pylab
 
-from ggplot import ggplot, geom_line, aes, xlab,ylab, ggtitle
+
+from ggplot import ggplot, geom_line, aes, xlab,ylab, ggtitle, geom_point
 from matplotlib import colors as mcolors
+from sklearn.decomposition import PCA
+from clustering import minmax_norm
 
 def plot_line(X,y,title=None,labelx=None,labely=None,save=False, colors=None):
     '''
@@ -38,7 +41,7 @@ def plot_line(X,y,title=None,labelx=None,labely=None,save=False, colors=None):
     for i in range(y.shape[1]):
          if colors not in X.columns:
             p = p + geom_line(aes(y=str(i),color = colors[i]))
-        else:
+         else:
             p = p + geom_point(aes(y=str(i),color = colors))
     
     p = p + xlab(labelx) + ylab(labely) + ggtitle(title)
@@ -249,7 +252,51 @@ def full_plot(df, segmentos, clusters=[]):
     return py.plot(fig, filename=df['ticker'][0].replace('/', "_"))
 
 
-def plot_segments(df, segments):
+def biplot(X):
     '''
+    Prints a biplot with ggplot. Requires color variable: "cluster" in the dataframe.
     '''
+    pca = PCA(n_components=2)
+    try:
+        res = pca.fit_transform(minmax_norm(X).drop(['fecha','ticker'], axis=1))
+    except ValueError:
+        res = pca.fit_transform(minmax_norm(X))
+        
+    df = pandas.DataFrame(res)
+    df.columns = ["x", "y"]
+    df['cluster'] = X['cluster'].values
+    
+    return ggplot(aes("x","y", color="cluster"),df) + geom_point()
+
+def plotly_biplot(X):
+    '''
+    Prints a biplot with plotly. Requires color variable: "cluster" in the dataframe.
+    '''
+    pca = PCA(n_components=2)
+    try:
+        res = pca.fit_transform(minmax_norm(X).drop(['fecha','ticker'], axis=1))
+    except ValueError:
+        res = pca.fit_transform(minmax_norm(X))
+    df = pandas.DataFrame(res)
+    df.columns = ["x", "y"]
+    df['cluster'] = X['cluster'].values
+    
+    cierre = go.Scatter(
+        x=df['x'], # assign x as the dataframe column 'x'
+        y=df['y'],
+        mode='markers',
+        marker=dict(
+            color = df['cluster'],
+            colorscale = 'Pastel2',
+        )
+    )
+        
+    data = [cierre]
+    layout = dict(title="Biplot", showlegend=False)
+    fig = dict(data=data, layout=layout)
+        
+    return py.plot(fig, filename="Biplot")
+    
+    
+    
     
