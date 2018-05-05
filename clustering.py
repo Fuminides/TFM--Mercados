@@ -10,7 +10,7 @@ from sklearn.neighbors import NearestNeighbors
 import pandas as pd
 
 from sklearn.cluster import KMeans
-from sklearn import preprocessing
+from sklearn import preprocessing, metrics
 
 def filter_numerical(df):
     '''
@@ -144,4 +144,9 @@ def minmax_norm(df):
     x = df.values #returns a numpy array
     min_max_scaler = preprocessing.MinMaxScaler()
     x_scaled = min_max_scaler.fit_transform(x)
-    return pd.DataFrame(x_scaled)     
+    return pd.DataFrame(x_scaled)
+
+def sil_metric(X)     :
+    '''
+    '''
+    return metrics.silhouette_score(X, X['cluster'], metric='sqeuclidean')
