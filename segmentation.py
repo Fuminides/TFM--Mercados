@@ -120,7 +120,8 @@ def distance(f1,f2, vector_importancias, penalizacion_orden=3):
     dten = np.log10(np.abs(ten1 - ten2))+3 #Es * 1000 en el log
     dten[dten == np.inf] = 0
     dten[dten== -np.inf] = 0
-    dten = np.max(dten * vector_importancias[int(len(vector_importancias)/2):])
+    dten2 = dten * vector_importancias[int(len(vector_importancias)/2):]
+    dten = np.max(dten2)
     
     return np.max([dabs, dten])
 
@@ -242,7 +243,7 @@ def segmentate(intervalo, data, distance_function, threshold, montecarlo=2, sile
     first = intervalo[0]
     last = intervalo[1]
     intervals = []
-    if valid_segment(data, intervalo, distance_function, threshold, montecarlo, silence, pen, vector_importancias):
+    if valid_segment(data=data, intervalo= intervalo, distance=distance_function, threshold=threshold, montecarlo=montecarlo, silence=silence, penalizacion_orden = pen, vector_importancias = vector_importancias):
         #If this is a valid segment, it finishes
         intervals.append(intervalo)
     else:
@@ -252,7 +253,7 @@ def segmentate(intervalo, data, distance_function, threshold, montecarlo=2, sile
             success = False     
             while not success:
                 new_interval = [last_check, random.randint(last_check+1, last)]
-                success = valid_segment(data, new_interval, distance_function, threshold, montecarlo, silence, pen, vector_importancias)
+                success = valid_segment(data=data, intervalo=new_interval, distance=distance_function, threshold=threshold, montecarlo=montecarlo,silence=silence, penalizacion_orden=pen, vector_importancias=vector_importancias)
                 
                 if success:
                     #We have found a valid segment, we append it to the list of segments
@@ -316,7 +317,7 @@ def segmentate_data_frame(df, montecarlo = 8, trh = 0.5, min_size=3, silence = [
     
     for i in maximals:
         rango = [inicio, i]
-        subsegmentos = segmentate(rango, df, distance, 0.5, montecarlo, silence, penalizacion_orden, vector_importancias)
+        subsegmentos = segmentate(intervalo=rango, data=df, distance_function=distance, threshold=0.5, montecarlo=montecarlo, silence=silence, pen=penalizacion_orden,vector_importancias=vector_importancias)
         res = res + subsegmentos #res.append(subsegmentos)
         index += 1
         
@@ -370,6 +371,16 @@ def get_segments(X, segments):
         final = segmento[1]
         
         resultado.append(X.iloc[inicio:final,:].drop(['fecha','ticker'], axis=1).values)
+    
+    return resultado
+
+def get_segments_nparray(X, segments):
+    resultado = []
+    for segmento in segments:
+        inicio = segmento[0]
+        final = segmento[1]
+        
+        resultado.append(X[inicio:final,:])
     
     return resultado
     

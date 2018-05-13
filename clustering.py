@@ -44,24 +44,28 @@ def extract_features(data, f,l, silence2=[], pesos = [1,1,1,1,1,1,1,1,1,1,1,1]):
         absolutos = medias[["apertura", "maximo", "minimo", "cierre", "volumen", "var"]]
         tendencias = medias[["vapertura", "vmaximo", "vminimo", "vcierre", "vvolumen", "vvar"]]
     
-    return [absolutos * pesos[0:int(len(pesos)/2)], tendencias * pesos[int(len(pesos)/2)]]
+    return [absolutos * pesos[0:int(len(pesos)/2)], tendencias * pesos[int(len(pesos)/2):]]
 
-def full_clustering(X, segmentos, n_clus = 3, silencio=[], pesos = [1,1,1,1,1,1, 1,1,1,1,1,1]):
+def full_clustering(X, segmentos, n_clus = 3, silencio=[], pesos = [1,1,1,1,1,1, 1,1,1,1,1,1], normalizar = False):
     '''
+    Given a data frame and their segmentation (segments indexes) this function applies
+    clustering for each segment and returns the dataframe with the representation of 
+    the segments.
     '''
     segments_df = apply_segmentation(X, segmentos, silencio, pesos)
-    names = segments_df.columns.values
-    segments_df = minmax_norm(segments_df)
-    segments_df.columns = names
+    if normalizar:
+        segments_df = minmax_norm(segments_df)
     
     fit = clustering(segments_df, n_clus)
     
     segments_df['cluster'] = fit.labels_
     
-    return segments_df
+    return segments_df, fit
 
 def cluster_points(X, segmentos, clusters):
     '''
+    Given a data frame of points, it's segmentation and it's segments cluster, it
+    clusters each point individually.
     '''
     rows = X.shape[0]
     res = [0]*rows
@@ -125,6 +129,7 @@ def apply_segmentation(X, segmentos, silencio=[], pesos = [1,1,1,1,1,1, 1,1,1,1,
 
 def apply_clustering(X, segmentos, clusters, asociaciones):
     '''
+    Cluster each point individually according to each segment cluster.
     '''
     X['cluster'] = 0
     for cluster in clusters:
@@ -137,16 +142,29 @@ def apply_clustering(X, segmentos, clusters, asociaciones):
         
     return X
         
-def minmax_norm(df):
+def minmax_norm(df_0):
     '''
+    Normalize data with the minmax norm.
     '''
-    df = filter_numerical(df)
-    x = df.values #returns a numpy array
+    df = filter_numerical(df_0)
+    names = list(df)
+    x = df.values
+    
     min_max_scaler = preprocessing.MinMaxScaler()
     x_scaled = min_max_scaler.fit_transform(x)
-    return pd.DataFrame(x_scaled)
+    holder = pd.DataFrame(x_scaled)
+    
+    holder.index = df_0.index
+    holder.columns = [names]
+    
+    for i in names:
+        df_0[i] = holder[i]
+    
+    return df_0
 
-def sil_metric(X)     :
+def sil_metric(X):
     '''
+    Return the sillhoutte coefficent of a data frame that has a 'cluster' column.
     '''
     return metrics.silhouette_score(X, X['cluster'], metric='sqeuclidean')
+

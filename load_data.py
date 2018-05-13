@@ -5,13 +5,13 @@ Created on Fri Jan 12 11:44:19 2018
 @author: Javier Fumanal Idocin
 """
 import json
-import quandl
-
-
 import pandas as pd
 import numpy as np
 from pandas_datareader import data
 from datetime import datetime
+
+import quandl
+
 
 ##############################
 # VARIABLES                  #
@@ -25,7 +25,7 @@ TICKERS = []
 # FUNCTIONS                  #
 ##############################
 
-def load_schema(file = "./Schemas.json"):
+def load_schema(file="./Schemas.json"):
     '''
     Loads file that contains a Database schema and maps it to known fields.
     '''
@@ -68,19 +68,19 @@ def load_online_data(ticker, schema=None, start=None, end=None, provider='quandl
         df = quandl.get(ticker[0], authtoken=AUTH_TOKEN)
     else:
         df = data.DataReader(ticker[0], provider, start, end)
-    
-    if schema==None:
+
+    if schema is None:
         if ticker[1] == "index":
             df['cierre'] = df['Value']
             df = df.loc[:, ['cierre']]
         else:
             df['apertura'] = df['Open']
-    
+
             try:
                 df['cierre'] = df['Close']
             except KeyError:
                 df['cierre'] = df['Last']
-    
+
             df['minimo'] = df['Low']
             df['maximo'] = df['High']
             df['volumen'] = df['Volume']
@@ -95,7 +95,7 @@ def load_online_data(ticker, schema=None, start=None, end=None, provider='quandl
         df['volumen'] = df[schema['volumen']]
         df['fecha'] = df[schema['fecha']]
         df['ticker'] = df[schema['ticker']]
-            
+
 
     df = df.loc[:, ['apertura', 'cierre', 'minimo', 'maximo', 'volumen', 'ticker', 'fecha']]
 
@@ -134,8 +134,8 @@ def _dates_to_string(colum_dates):
     res = []
     for i in range(len(colum_dates)):
         res.append(_number_to_date(colum_dates[i]))
-    
+
     return res
-        
+
 def _number_to_date(number_date):
     return str(number_date)[:10]
