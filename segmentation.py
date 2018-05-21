@@ -384,3 +384,15 @@ def get_segments_nparray(X, segments):
     
     return resultado
     
+def get_years(data):
+    '''
+    Returns and array with yearly-separated data.
+    '''
+    grupos = []
+    data_groups = data.groupby(data.index.year)
+    
+    for i in data_groups.groups.keys():
+        grupos.append(data_groups.get_group(i))
+    
+    return grupos
+    

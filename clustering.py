@@ -127,7 +127,7 @@ def apply_segmentation(X, segmentos, silencio=[], pesos = [1,1,1,1,1,1, 1,1,1,1,
         
     return segments_df
 
-def apply_clustering(X, segmentos, clusters, asociaciones):
+def add_clustering(X, segmentos, clusters, asociaciones):
     '''
     Cluster each point individually according to each segment cluster.
     '''
@@ -139,6 +139,22 @@ def apply_clustering(X, segmentos, clusters, asociaciones):
             final = seg[1]
             
             X['cluster'].iloc[inicio:final] = cluster
+        
+    return X
+
+def add_segmentation(X, segmentos):
+    '''
+    Add each segmentation to each point individually.
+    '''
+    X['segmento'] = 0
+    for index, seg in enumerate(segmentos):
+        inicio = seg[0]
+        final = seg[1]
+        
+        X['segmento'].iloc[inicio:final] = index
+    
+    ultimo = segmentos[-1][1]
+    X['segmento'].iloc[ultimo:X.shape[0]] = index+1
         
     return X
         

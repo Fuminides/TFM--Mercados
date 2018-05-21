@@ -53,7 +53,6 @@ def plot_line(X,y,title=None,labelx=None,labely=None,save=False, colors=None):
 
 def plotly_line_plot(df, columna):
     '''
-    
     A simple plotly plot thay creates a line plot with a variable from a data frame
     '''
 
@@ -99,60 +98,28 @@ def full_plot(df, segmentos, clusters=[]):
         x=df['fecha'], # assign x as the dataframe column 'x'
         y=df['cierre'],
         name = "Cierre",
-        mode='markers',
-        line=dict(
-            color = clusters,
-            colorscale = 'Pastel2',
-        ),
-        marker=dict(
-            color = clusters,
-            colorscale = 'Pastel2',
-        )
+        mode='line'
     )
         
     apertura = go.Scatter(
         x=df['fecha'], # assign x as the dataframe column 'x'
         y=df['apertura'],
         name = "Apertura",
-        mode='markers',
-        line=dict(
-            color = clusters,
-            colorscale = 'Pastel2',
-        ),
-        marker=dict(
-            color = clusters,
-            colorscale = 'Pastel2',
-        )
+        mode='line'
     )
     
     minimo = go.Scatter(
         x=df['fecha'], # assign x as the dataframe column 'x'
         y=df['minimo'],
         name = "Mínimo",
-        mode='markers',
-        line=dict(
-            color = clusters,
-            colorscale = 'Pastel2',
-        ),
-        marker=dict(
-            color = clusters,
-            colorscale = 'Pastel2',
-        )
+        mode='line'
     )
     
     maximo = go.Scatter(
         x=df['fecha'], # assign x as the dataframe column 'x'
         y=df['maximo'],
         name = "Máximo",
-        mode='markers',
-        line=dict(
-            color = clusters,
-            colorscale = 'Pastel2',
-        ),
-        marker=dict(
-            color = clusters,
-            colorscale = 'Pastel2',
-        )
+        mode='line'
         
     )
     
@@ -160,15 +127,7 @@ def full_plot(df, segmentos, clusters=[]):
         x=df['fecha'], # assign x as the dataframe column 'x'
         y=df['volumen']/np.max(df['volumen']) * escala,
         name = "Volumen",
-        mode='markers',
-        line=dict(
-            color = clusters,
-            colorscale = 'Pastel2',
-        ),
-        marker=dict(
-            color = clusters,
-            colorscale = 'Pastel2',
-        )
+        mode='line'
     )
     
     vcierre = go.Scatter(
@@ -251,6 +210,30 @@ def full_plot(df, segmentos, clusters=[]):
     
     return py.plot(fig, filename=df['ticker'][0].replace('/', "_"))
 
+def visualize_clusters(X, var):
+    '''
+    Prints with ggplot a visualization of the different clusters.
+    '''
+    aux = pandas.DataFrame()
+    
+    aux['fecha'] = X.index.values
+    aux[var] = X[var]
+    aux['Cluster'] = X['cluster']
+    
+    return ggplot(aes(x=var, color="Cluster"), aux) + geom_line() + xlab(var) + ylab("Valor") + ggtitle("Clustering de la variable \"" + var + "\"")
+
+def visualize_segmentation(X, var):
+    '''
+    Prints with ggplot a visualization of the different segments.
+    '''
+    aux = pandas.DataFrame(index = X.index)
+    
+    aux['fecha'] = X.index.values
+    aux[var] = X[var]
+    aux['Segmento'] = X['segmento'].astype(str)
+    
+    return ggplot(aes(x="fecha", y=var, color="Segmento"), aux) + geom_line() + xlab("Fecha") + ylab(var) + ggtitle("Segmentacion de la variable \"" + var + "\"")
+    
 
 def biplot(X):
     '''
