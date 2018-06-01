@@ -53,7 +53,8 @@ def fill_dates(df):
             df.loc[fecha, ]
         except KeyError:
             df.loc[fecha] = [np.nan]*tamano
-            df.loc[fecha, 'fecha'] = _number_to_date(fecha)
+            #df.loc[fecha, 'fecha'] = _number_to_date(fecha)
+            df.loc[fecha, 'fecha'] = fecha
             df.loc[fecha, 'ticker'] = ticker
     
     df = df.sort_index()

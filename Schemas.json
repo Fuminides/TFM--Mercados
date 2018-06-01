@@ -1,0 +1,10 @@
+{
+   "bbva": { 
+    	"Date": "fecha",
+    	"Open": "apertura",
+    	"High": "maximo",
+    	"Low": "minimo",
+    	"Volume": "volumen",
+    	"Adj Close": "cierre"
+   }
+}

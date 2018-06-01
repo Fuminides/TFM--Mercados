@@ -38,13 +38,15 @@ def select_schema(name):
     schemas = load_schema()
     return schemas[name.split("\\")[0]]
 
-def load_local_data(path, sep='\t'):
+def load_local_data(path, schema = None, sep='\t'):
     '''
     Loads finantial data from a text file separated by tabs.
     Returns a pandas data_frame.
     '''
-    func = lambda dates: [datetime.strptime(x, '%d/%m/%Y') for x in dates]
-    return pd.read_csv(path, sep=sep, parse_dates=['fecha'],
+    
+    if schema is None:
+        func = lambda dates: [datetime.strptime(x, '%d/%m/%Y') for x in dates]
+        return pd.read_csv(path, sep=sep, parse_dates=['fecha'],
                        date_parser=func,
                        dtype={"ticker":np.str, "apertura":np.float, "maximo":np.float,
                               "minimo":np.float, "cierre":np.float, "volumen":np.float},
@@ -52,6 +54,39 @@ def load_local_data(path, sep='\t'):
                        names=["ticker", "fecha", "apertura", "maximo", "minimo",
                               "cierre", "volumen"],
                        decimal=",")
+    else:
+        func = lambda dates: [datetime.strptime(x, '%Y-%m-%d') for x in dates]
+        carga_inicial = pd.read_csv(path, sep = sep)
+        nombres = list(carga_inicial)
+        nombres_ordenados = []
+        tipos = {}
+        dumpings = 0
+        
+        for nombre in nombres:
+            try:
+                nombres_ordenados.append(schema[nombre])
+                if schema[nombre] != "fecha":
+                    tipos[schema[nombre]] = np.float
+
+            except KeyError:
+                nombres_ordenados.append('dump' + str(dumpings))
+                dumpings += 1
+
+        df_res =  pd.read_csv(path, sep=sep, parse_dates=['fecha'],
+                       date_parser=func,
+                       dtype=tipos,
+                       header=0,
+                       names=nombres_ordenados,
+                       skiprows = 0,
+                       decimal=".")
+        
+        for i in np.arange(0,dumpings):
+            df_res = df_res.drop('dump' + str(i), 1)
+        
+        df_res.index = df_res['fecha']
+        
+        return df_res
+        
 
 
 def load_online_data(ticker, schema=None, start=None, end=None, provider='quandl'):
@@ -126,7 +161,13 @@ def load_full_stock_data(reload=True):
 
     for ticker in TICKERS:
         key = TICKERS[ticker]
-        dfs[ticker] = load_online_data(key)
+        
+        if key[2] == "online":
+            dfs[ticker] = load_online_data(key)
+        elif key[2] == "offline":
+            schem = select_schema(ticker)
+            dfs[ticker] = load_local_data(key[3], schem)
+            dfs[ticker]['ticker'] =  ticker.upper()
 
     return dfs
 

@@ -39,7 +39,7 @@ def plot_line(X,y,title=None,labelx=None,labely=None,save=False, colors=None):
     p = ggplot(df, aes(x='X'))
     
     for i in range(y.shape[1]):
-         if colors not in X.columns:
+         if colors not in X.columns.values:
             p = p + geom_line(aes(y=str(i),color = colors[i]))
          else:
             p = p + geom_point(aes(y=str(i),color = colors))

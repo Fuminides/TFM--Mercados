@@ -108,16 +108,20 @@ def distance(f1,f2, vector_importancias, penalizacion_orden=3):
     dabs = (np.abs(abs1 - abs2) / abs2)
     
     try:
-        pens = (1 + np.e**-(np.log10(abs(abs1-abs2))-penalizacion_orden))
+        with np.errstate(divide='ignore'):
+            pens = (1 + np.e**-(np.log10(abs(abs1-abs2))-penalizacion_orden))
         pens[pens.index != 'volumen'] = 1
         dabs = dabs / pens
+            
     except KeyError:
         dabs=dabs
     
     dabs[dabs == np.inf] = 0
     dabs[dabs == -np.inf] = 0
     dabs = np.max(dabs * vector_importancias[0:int(len(vector_importancias)/2)])
-    dten = np.log10(np.abs(ten1 - ten2))+3 #Es * 1000 en el log
+    with np.errstate(divide='ignore'):
+        dten = np.log10(np.abs(ten1 - ten2))+3 #Es * 1000 en el log
+        
     dten[dten == np.inf] = 0
     dten[dten== -np.inf] = 0
     dten2 = dten * vector_importancias[int(len(vector_importancias)/2):]
