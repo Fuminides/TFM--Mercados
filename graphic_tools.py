@@ -9,10 +9,9 @@ import pandas
 import plotly.plotly as py
 import plotly.graph_objs as go
 import numpy as np
-import pylab
 
 
-from ggplot import ggplot, geom_line, aes, xlab,ylab, ggtitle, geom_point
+from ggplot import ggplot, geom_line, aes, xlab,ylab, ggtitle, geom_point, theme, element_text
 from matplotlib import colors as mcolors
 from sklearn.decomposition import PCA
 from clustering import minmax_norm
@@ -216,11 +215,13 @@ def visualize_clusters(X, var):
     '''
     aux = pandas.DataFrame()
     
-    aux['fecha'] = X.index.values
+    aux['fecha'] = X.index
+    aux.index = X.index
+    
     aux[var] = X[var]
     aux['Cluster'] = X['cluster']
     
-    return ggplot(aes(x=var, color="Cluster"), aux) + geom_line() + xlab(var) + ylab("Valor") + ggtitle("Clustering de la variable \"" + var + "\"")
+    return ggplot(aes(x='fecha', y=var, color='Cluster'), aux) + geom_point() + xlab(var) + ylab("Valor") + ggtitle("Clustering de la variable \"" + var + "\"") +  theme(axis_text_x  = element_text(color=[0,0,0,0]))
 
 def visualize_segmentation(X, var):
     '''

@@ -77,13 +77,12 @@ def cluster_points(X, segmentos, clusters):
         
     X['cluster'] = res
     
-    return X
     
 def clustering(X, n_clusters=3):
     '''
     Applies K-Means to a dataset given the number of clusters
     '''
-    return KMeans(n_clusters=2, random_state=0).fit(X)
+    return KMeans(n_clusters=n_clusters, random_state=0).fit(X)
     
 def hopkins_statistic(X, m=10):
     '''
