@@ -242,7 +242,7 @@ def biplot(X):
     '''
     pca = PCA(n_components=2)
     try:
-        res = pca.fit_transform(minmax_norm(X).drop(['fecha','ticker'], axis=1))
+        res = pca.fit_transform(minmax_norm(X).drop(['fecha','ticker','cluster'], axis=1))
     except ValueError:
         res = pca.fit_transform(minmax_norm(X))
         

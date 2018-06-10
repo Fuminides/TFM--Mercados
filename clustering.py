@@ -18,7 +18,12 @@ def filter_numerical(df):
     (apertura, cierre, minimo, maximo, volumen)
     '''
     try: 
-        return df.drop(["ticker", "fecha"], axis=1)
+        candidatos = ["ticker", "fecha", "cluster"]
+        finalistas = []
+        for i in candidatos:
+            if i in list(df):
+                finalistas.append(i)
+        return df.drop(finalistas, axis=1)
     except ValueError:
         return df
     
@@ -46,19 +51,24 @@ def extract_features(data, f,l, silence2=[], pesos = [1,1,1,1,1,1,1,1,1,1,1,1]):
     
     return [absolutos * pesos[0:int(len(pesos)/2)], tendencias * pesos[int(len(pesos)/2):]]
 
-def full_clustering(X, segmentos, n_clus = 3, silencio=[], pesos = [1,1,1,1,1,1, 1,1,1,1,1,1], normalizar = False):
+def full_clustering(X, segmentos, n_clus = 3, silencio=[], pesos = None, normalizar = False):
     '''
     Given a data frame and their segmentation (segments indexes) this function applies
     clustering for each segment and returns the dataframe with the representation of 
     the segments.
     '''
+    if pesos is None:
+        pesos = [1] * (len(list(X._get_numeric_data())) - len(silencio)*2)
+        
     segments_df = apply_segmentation(X, segmentos, silencio, pesos)
+        
     if normalizar:
         segments_df = minmax_norm(segments_df)
     
     fit = clustering(segments_df, n_clus)
     
     segments_df['cluster'] = fit.labels_
+    segments_df['cluster'] = segments_df['cluster'].astype(str)
     
     return segments_df, fit
 
@@ -76,6 +86,7 @@ def cluster_points(X, segmentos, clusters):
         res[inicio:fin] = [clus]*(fin-inicio)
         
     X['cluster'] = res
+    X['cluster'] = X['cluster'].astype(str)
     
     
 def clustering(X, n_clusters=3):
@@ -131,6 +142,7 @@ def add_clustering(X, segmentos, clusters, asociaciones):
     Cluster each point individually according to each segment cluster.
     '''
     X['cluster'] = 0
+    
     for cluster in clusters:
         for i_segment in asociaciones[cluster]:
             seg = segmentos[i_segment]
@@ -138,7 +150,8 @@ def add_clustering(X, segmentos, clusters, asociaciones):
             final = seg[1]
             
             X['cluster'].iloc[inicio:final] = cluster
-        
+    
+    X['cluster'] = X['cluster'].astype(str)
     return X
 
 def add_segmentation(X, segmentos):
