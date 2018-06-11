@@ -62,26 +62,33 @@ def evaluate_vecindario(vec):
 ######################################
 #   CLASIFICADORES - ENTRENAMIENTO   #
 ######################################
-def evaluate(datos, ponderaciones, silencios, tipo_clustering="KMEANS", ncluster = 3, metrica = "SIL"):
+def evaluate(datos, ponderaciones, silencios, carga_computacional=1,tipo_clustering="KMEANS", ncluster = 3, metrica = "SIL"):
     '''
     Dado un clasificador y un conjunto de train y test devuelve su tasa de acierto en test.
     '''
-    #TODO
-    segmentos, _ = sg.segmentate_data_frame(df=datos, montecarlo=4, min_size=7, silence=silencios, 
-                                            vector_importancias=ponderaciones)
+    if carga_computacional == 0:
+        print("Aun estoy en ello")
+        #TODO
+    elif carga_computacional>0:
+        segmentos, _ = sg.segmentate_data_frame(df=datos, montecarlo=4, min_size=7, silence=silencios, 
+                                                vector_importancias=ponderaciones)
     
-    if tipo_clustering == "DTW":
-        segmentados = sg.get_segments(datos, segmentos)
-        asignaciones = pam.kmedoids(segmentados, n_clus = ncluster)
-        segments_df = cl.apply_clustering(datos, segmentos, asignaciones[1], asignaciones[2])
-    elif tipo_clustering == "KMEANS":
-        segments_df = cl.full_clustering(datos, segmentos, n_clus = ncluster, silencio=silencios, pesos = ponderaciones, normalizar=False)
-        
-    if metrica == "SIL":    
-        return cl.sil_metric(segments_df[0])
-    elif metrica == "ENTROPY":
-        return entropy_metric(segments_df)
-        
+        if carga_computacional == 1:
+            segmentados = cl.apply_segmentation(datos, segmentos, silencios, ponderaciones)
+            return cl.hopkins_statistic(cl.filter_numerical(segmentados),m=4)
+        elif carga_computacional==2:
+            if tipo_clustering == "DTW":
+                segmentados = sg.get_segments(datos, segmentos)
+                asignaciones = pam.kmedoids(segmentados, n_clus = ncluster)
+                segments_df = cl.apply_clustering(datos, segmentos, asignaciones[1], asignaciones[2])
+            elif tipo_clustering == "KMEANS":
+                segments_df = cl.full_clustering(datos, segmentos, n_clus = ncluster, silencio=silencios, pesos = ponderaciones, normalizar=False)
+                
+            if metrica == "SIL":    
+                return cl.sil_metric(segments_df[0])
+            elif metrica == "ENTROPY":
+                return entropy_metric(segments_df)
+            
 
 def discretizacion(final_df):
     '''
@@ -109,7 +116,7 @@ def entropy_metric(X):
     Calculates the total entropy of  the clusterization made.
     '''
     res = 0
-    dis_p = discretizacion(X) #TODO
+    dis_p = discretizacion(X)
     for i in np.unique(dis_p[:,-1]):
         dict_estados = {}
         cluster = dis_p[dis_p[:,-1]==i,:]
