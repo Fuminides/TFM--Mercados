@@ -233,7 +233,7 @@ def visualize_segmentation(X, var):
     aux[var] = X[var]
     aux['Segmento'] = X['segmento'].astype(str)
     
-    return ggplot(aes(x="fecha", y=var, color="Segmento"), aux) + geom_line() + xlab("Fecha") + ylab(var) + ggtitle("Segmentacion de la variable \"" + var + "\"")
+    return ggplot(aes(x="fecha", y=var, color="Segmento"), aux) + geom_point() + xlab("Fecha") + ylab(var) + ggtitle("Segmentacion de la variable \"" + var + "\"") +  theme(axis_text_x  = element_text(color=[0,0,0,0]))
     
 
 def biplot(X):
