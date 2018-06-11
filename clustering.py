@@ -8,7 +8,8 @@ import numpy as np
 import random
 from sklearn.neighbors import NearestNeighbors
 import pandas as pd
-
+import pam
+from segmentation import get_segments_nparray
 from sklearn.cluster import KMeans
 from sklearn import preprocessing, metrics
 
@@ -18,7 +19,12 @@ def filter_numerical(df):
     (apertura, cierre, minimo, maximo, volumen)
     '''
     try: 
-        return df.drop(["ticker", "fecha"], axis=1)
+        candidatos = ["ticker", "fecha", "cluster"]
+        finalistas = []
+        for i in candidatos:
+            if i in list(df):
+                finalistas.append(i)
+        return df.drop(finalistas, axis=1)
     except ValueError:
         return df
     
@@ -46,21 +52,41 @@ def extract_features(data, f,l, silence2=[], pesos = [1,1,1,1,1,1,1,1,1,1,1,1]):
     
     return [absolutos * pesos[0:int(len(pesos)/2)], tendencias * pesos[int(len(pesos)/2):]]
 
-def full_clustering(X, segmentos, n_clus = 3, silencio=[], pesos = [1,1,1,1,1,1, 1,1,1,1,1,1], normalizar = False):
+def full_clustering(X, segmentos, n_clus = 3, mode="K-Means", silencio=[], pesos = None, normalizar = False):
     '''
     Given a data frame and their segmentation (segments indexes) this function applies
     clustering for each segment and returns the dataframe with the representation of 
     the segments.
     '''
-    segments_df = apply_segmentation(X, segmentos, silencio, pesos)
-    if normalizar:
-        segments_df = minmax_norm(segments_df)
-    
-    fit = clustering(segments_df, n_clus)
-    
-    segments_df['cluster'] = fit.labels_
-    
-    return segments_df, fit
+    if mode == "K-Means":    
+        if pesos is None:
+            pesos = [1] * (len(list(X._get_numeric_data())) - len(silencio)*2)
+            
+        segments_df = apply_segmentation(X, segmentos, silencio, pesos)
+            
+        if normalizar:
+            segments_df = minmax_norm(segments_df)
+        
+        fit = clustering(segments_df, n_clus)
+        
+        segments_df['cluster'] = fit.labels_
+        segments_df['cluster'] = segments_df['cluster'].astype(str)
+        
+        return segments_df, fit
+    else:
+        X_num = filter_numerical(X)
+        if normalizar:
+            X_num = minmax_norm(X_num)
+        X_num = filter_silence(X_num, silencio)
+        X_np = np.array(X_num)
+        X_segments = get_segments_nparray(X_np, segmentos)
+        
+        return pam.kmedoids(X_segments, n_clus)
+
+def filter_silence(X, silencios):
+    '''
+    '''
+    return X.drop(silencios, axis=1)
 
 def cluster_points(X, segmentos, clusters):
     '''
@@ -76,6 +102,7 @@ def cluster_points(X, segmentos, clusters):
         res[inicio:fin] = [clus]*(fin-inicio)
         
     X['cluster'] = res
+    X['cluster'] = X['cluster'].astype(str)
     
     
 def clustering(X, n_clusters=3):
@@ -131,6 +158,7 @@ def add_clustering(X, segmentos, clusters, asociaciones):
     Cluster each point individually according to each segment cluster.
     '''
     X['cluster'] = 0
+    
     for cluster in clusters:
         for i_segment in asociaciones[cluster]:
             seg = segmentos[i_segment]
@@ -138,7 +166,8 @@ def add_clustering(X, segmentos, clusters, asociaciones):
             final = seg[1]
             
             X['cluster'].iloc[inicio:final] = cluster
-        
+    
+    X['cluster'] = X['cluster'].astype(str)
     return X
 
 def add_segmentation(X, segmentos):

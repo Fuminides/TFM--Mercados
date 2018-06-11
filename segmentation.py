@@ -303,7 +303,7 @@ def join_segments(data, o_segments, distance, threshold, minimum_size=5, silence
         
     return res, explanations
 
-def segmentate_data_frame(df, montecarlo = 8, trh = 0.5, min_size=3, silence = [], penalizacion_orden = 3, verbose = False, vector_importancias = [1,1,1,1,1,1,1,1,1,1,1,1]):
+def segmentate_data_frame(df, montecarlo = 8, trh = 0.5, min_size=3, silence = [], penalizacion_orden = 3, verbose = False, vector_importancias = None):
     '''
     Given a financial data frame, it gets segmentated according to standard parameters.
     '''
@@ -319,6 +319,9 @@ def segmentate_data_frame(df, montecarlo = 8, trh = 0.5, min_size=3, silence = [
         bar.update(0)
     index = 0
     
+    if vector_importancias is None:
+        vector_importancias = [1] * (len(list(df._get_numeric_data())) - len(silence)*2)
+        
     for i in maximals:
         rango = [inicio, i]
         subsegmentos = segmentate(intervalo=rango, data=df, distance_function=distance, threshold=0.5, montecarlo=montecarlo, silence=silence, pen=penalizacion_orden,vector_importancias=vector_importancias)
