@@ -71,7 +71,7 @@ def evaluate(datos, ponderaciones, silencios, carga_computacional=1,tipo_cluster
         #TODO
     elif carga_computacional>0:
         segmentos, _ = sg.segmentate_data_frame(df=datos, montecarlo=4, min_size=7, silence=silencios, 
-                                                vector_importancias=ponderaciones)
+                                                vector_importancias=ponderaciones, verbose=False)
     
         if carga_computacional == 1:
             segmentados = cl.apply_segmentation(datos, segmentos, silencios, ponderaciones)
@@ -214,6 +214,7 @@ def nueva_ronda(datos_originales, pesos, silencios):
     #Se evaluan los exploradores
     sil1, vec1 = evaluate_explorer(datos_originales, pesos1, silencios, True)
     sil2, vec2 = evaluate_explorer(datos_originales, pesos2, silencios, True)
+    
     if len(silencios2[1]) > 0:
         sil3, vec3 = evaluate_explorer(datos_originales, silencios2[1], silencios2[0], True)
         
@@ -317,4 +318,7 @@ def simple_run(data, epochs = 30, reinicio = "random", silencios=["maximo","mini
     print("Reinicios %d" % (iters_sin_mejora / 5), "Epochs sin mejora: %d" % iters_sin_mejora, "(%d%%)" % int((100*(iters_sin_mejora*1.0) / epochs)))
     
     return mejor_tasa_de_acierto, pesos, grados
-    
+
+
+if __name__ == "main":    
+    resop = simple_run(san, epochs=1)

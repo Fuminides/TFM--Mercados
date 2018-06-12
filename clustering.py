@@ -12,6 +12,8 @@ import pam
 from segmentation import get_segments_nparray
 from sklearn.cluster import KMeans
 from sklearn import preprocessing, metrics
+from fastdtw import fastdtw
+
 
 def filter_numerical(df):
     '''
@@ -58,9 +60,10 @@ def full_clustering(X, segmentos, n_clus = 3, mode="K-Means", silencio=[], pesos
     clustering for each segment and returns the dataframe with the representation of 
     the segments.
     '''
+    if pesos is None:
+         pesos = [1] * (len(list(X._get_numeric_data())) - len(silencio)*2)
+            
     if mode == "K-Means":    
-        if pesos is None:
-            pesos = [1] * (len(list(X._get_numeric_data())) - len(silencio)*2)
             
         segments_df = apply_segmentation(X, segmentos, silencio, pesos)
             
@@ -72,16 +75,37 @@ def full_clustering(X, segmentos, n_clus = 3, mode="K-Means", silencio=[], pesos
         segments_df['cluster'] = fit.labels_
         segments_df['cluster'] = segments_df['cluster'].astype(str)
         
-        return segments_df, fit
     else:
         X_num = filter_numerical(X)
+        
         if normalizar:
             X_num = minmax_norm(X_num)
+            
         X_num = filter_silence(X_num, silencio)
         X_np = np.array(X_num)
-        X_segments = get_segments_nparray(X_np, segmentos)
         
-        return pam.kmedoids(X_segments, n_clus)
+        X_segments = get_segments_nparray(X_np, segmentos)
+        _, best_choice, best_res =  pam.kmedoids(X_segments, n_clus)
+
+        fit = FTWFit(best_choice, filter_numerical(X))
+        
+        segments_df = apply_segmentation(X, segmentos, silencio, pesos)
+        segments_df = add_clustering_segments(segments_df, best_choice, best_res)
+        
+    return segments_df, fit
+
+def add_clustering_segments(segmentos, clusters, asociaciones):
+    '''
+    Cluster each point individually according to each segment cluster.
+    '''
+    segmentos['cluster'] = 0
+    
+    for cluster in clusters:
+        for i_segment in asociaciones[cluster]:
+            segmentos['cluster'][i_segment] = cluster
+    
+    segmentos['cluster'] = segmentos['cluster'].astype(str)
+    return segmentos
 
 def filter_silence(X, silencios):
     '''
@@ -212,3 +236,22 @@ def sil_metric(X):
     '''
     return metrics.silhouette_score(X, X['cluster'], metric='sqeuclidean')
 
+
+class FTWFit:
+    
+    def __init__(self, keys, values):
+        self.centroides = {}
+        for i in keys:
+            self.centroides[i] = values.iloc[i]
+            
+    def predict(self, point):
+        best = np.inf
+        for key, value in self.centroides.iteritems():
+            tmp = fastdtw(point, value)[0]
+            
+            if best > tmp:
+                best = tmp
+                res = key
+            
+        return res
+        
