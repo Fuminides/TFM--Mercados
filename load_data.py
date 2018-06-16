@@ -9,7 +9,8 @@ import pandas as pd
 import numpy as np
 from pandas_datareader import data
 from datetime import datetime
-
+from pathlib import Path
+import os.path
 import quandl
 
 
@@ -25,7 +26,7 @@ TICKERS = []
 # FUNCTIONS                  #
 ##############################
 
-def load_schema(file="./Schemas.json"):
+def load_schema(file="./Datos/Schemas.json"):
     '''
     Loads file that contains a Database schema and maps it to known fields.
     '''
@@ -36,9 +37,12 @@ def select_schema(name):
     Given a name from Quandl, it returns
     '''
     schemas = load_schema()
-    return schemas[name.split("\\")[0]]
+    try:
+        return schemas[name.split("\\")[0]]
+    except KeyError:
+        return None
 
-def load_local_data(path, schema = None, sep='\t'):
+def load_local_data(path, schema = None, sep='\t', dec=","):
     '''
     Loads finantial data from a text file separated by tabs.
     Returns a pandas data_frame.
@@ -46,7 +50,7 @@ def load_local_data(path, schema = None, sep='\t'):
     
     if schema is None:
         func = lambda dates: [datetime.strptime(x, '%d/%m/%Y') for x in dates]
-        return pd.read_csv(path, sep=sep, parse_dates=['fecha'],
+        df_res = pd.read_csv(path, sep=sep, parse_dates=['fecha'],
                        date_parser=func,
                        dtype={"ticker":np.str, "apertura":np.float, "maximo":np.float,
                               "minimo":np.float, "cierre":np.float, "volumen":np.float},
@@ -54,6 +58,9 @@ def load_local_data(path, schema = None, sep='\t'):
                        names=["ticker", "fecha", "apertura", "maximo", "minimo",
                               "cierre", "volumen"],
                        decimal=",")
+        df_res.index = df_res['fecha']
+        
+        return df_res
     else:
         func = lambda dates: [datetime.strptime(x, '%Y-%m-%d') for x in dates]
         carga_inicial = pd.read_csv(path, sep = sep)
@@ -61,7 +68,6 @@ def load_local_data(path, schema = None, sep='\t'):
         nombres_ordenados = []
         tipos = {}
         dumpings = 0
-        
         for nombre in nombres:
             try:
                 nombres_ordenados.append(schema[nombre])
@@ -78,7 +84,7 @@ def load_local_data(path, schema = None, sep='\t'):
                        header=0,
                        names=nombres_ordenados,
                        skiprows = 0,
-                       decimal=".")
+                       decimal=dec)
         
         for i in np.arange(0,dumpings):
             df_res = df_res.drop('dump' + str(i), 1)
@@ -137,7 +143,7 @@ def load_online_data(ticker, schema=None, start=None, end=None, provider='quandl
 
     return df
 
-def init_variables(path="./FD.json"):
+def init_variables(path="./Datos/FD.json"):
     '''
     Init global variables: API token and tickers.
 
@@ -166,7 +172,7 @@ def load_full_stock_data(reload=True):
             dfs[ticker] = load_online_data(key)
         elif key[2] == "offline":
             schem = select_schema(ticker)
-            dfs[ticker] = load_local_data(key[3], schem)
+            dfs[ticker] = load_local_data(key[3], schem, dec=".")
             dfs[ticker]['ticker'] =  ticker.upper()
 
     return dfs
@@ -180,3 +186,18 @@ def _dates_to_string(colum_dates):
 
 def _number_to_date(number_date):
     return str(number_date)[:10]
+
+def save_df(df):
+    '''
+    '''
+    df.to_pickle('./Datos/' + df.ticker[0].split("/")[-1] + '.pkl')
+
+def restore_df(ticker):
+    '''
+    '''
+    df_file = Path('./Datos/' + ticker.split("/")[-1] + '.pkl')
+    if os.path.isfile(df_file):
+        return pd.read_pickle(df_file)
+    else:
+        return None
+    
