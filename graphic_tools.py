@@ -67,13 +67,13 @@ def full_plot(df, segmentos, clusters=[]):
     '''
     A plotly plot thay creates a line plot with a variable from a data frame
     '''
-    invisibles = [True, True, True, True, True]
+    df=df.drop(['var','vvar'],axis=1,errors='ignore')
     lineas_divisorias = []
     
     if len(clusters) == 0:
-        escala = max(df.drop('volumen',axis=1).select_dtypes(include=[np.number]).max())
+        escala = max(df.drop(['volumen','vcierre','vapertura','vmaximo','vminimo','vvolumen'],axis=1,errors='ignore').select_dtypes(include=[np.number]).max())
     else:
-        escala = max(df.drop(['volumen','cluster'],axis=1).select_dtypes(include=[np.number]).max())
+        escala = max(df.drop(['volumen','vcierre','cluster','vapertura','vmaximo','vminimo','vvolumen'],axis=1,errors='ignore').select_dtypes(include=[np.number]).max())
     
         
     for i in segmentos:
@@ -93,114 +93,180 @@ def full_plot(df, segmentos, clusters=[]):
         }
         lineas_divisorias.append(linea)
         
-    cierre = go.Scatter(
-        x=df['fecha'], # assign x as the dataframe column 'x'
-        y=df['cierre'],
-        name = "Cierre",
-        mode='line'
-    )
+    data = []
+    invisibles = [True] * int(len(list(df))/2)
+    botones = []
+    
+    tobutton = dict(label = 'Todos',
+                 method = 'update',
+                 args = [{'visible': [True] * int(len(list(df))/2)+ invisibles},
+                         {'title': 'Todos los campos'}])
+    botones.append(tobutton)
+    try:
+        cierre = go.Scatter(
+            x=df['fecha'], # assign x as the dataframe column 'x'
+            y=df['cierre'],
+            name = "Cierre",
+            mode='line'
+        )
+        data.append(cierre)
         
-    apertura = go.Scatter(
-        x=df['fecha'], # assign x as the dataframe column 'x'
-        y=df['apertura'],
-        name = "Apertura",
-        mode='line'
-    )
-    
-    minimo = go.Scatter(
-        x=df['fecha'], # assign x as the dataframe column 'x'
-        y=df['minimo'],
-        name = "Mínimo",
-        mode='line'
-    )
-    
-    maximo = go.Scatter(
-        x=df['fecha'], # assign x as the dataframe column 'x'
-        y=df['maximo'],
-        name = "Máximo",
-        mode='line'
+        visuals = [False] * int(len(list(df))/2)
+        visuals[len(data)-1] = True
+        cbutton = dict(label = 'Precio de Cierre',
+                 method = 'update',
+                 args = [{'visible': visuals+ invisibles},
+                         {'title': 'Precio de Cierre'}])
+        botones.append(cbutton)
+    except KeyError:
+        pass
+    try:    
+        apertura = go.Scatter(
+            x=df['fecha'], # assign x as the dataframe column 'x'
+            y=df['apertura'],
+            name = "Apertura",
+            mode='line'
+        )
         
-    )
+        data.append(apertura)
+        
+        visuals = [False] * int(len(list(df))/2)
+        visuals[len(data)-1] = True
+        abutton = dict(label = 'Precio de Apertura',
+                 method = 'update',
+                 args = [{'visible': visuals+ invisibles},
+                         {'title': 'Precio de Apertura'}])
+        botones.append(abutton)
+    except KeyError:
+        pass
     
-    volumen = go.Scatter(
-        x=df['fecha'], # assign x as the dataframe column 'x'
-        y=df['volumen']/np.max(df['volumen']) * escala,
-        name = "Volumen",
-        mode='line'
-    )
+    try:
+        minimo = go.Scatter(
+            x=df['fecha'], # assign x as the dataframe column 'x'
+            y=df['minimo'],
+            name = "Mínimo",
+            mode='line'
+        )
+        data.append(minimo)
+        
+        visuals = [False] * int(len(list(df))/2)
+        visuals[len(data)-1] = True
+        mibutton = dict(label = 'Precio Mínimo',
+                 method = 'update',
+                 args = [{'visible': visuals+ invisibles},
+                         {'title': 'Precio Mínimo'}])
+        botones.append(mibutton)
+        
+    except KeyError:
+        pass    
+    try:
+        maximo = go.Scatter(
+            x=df['fecha'], # assign x as the dataframe column 'x'
+            y=df['maximo'],
+            name = "Máximo",
+            mode='line'     
+        )
+        data.append(maximo)
+        
+        visuals = [False] * int(len(list(df))/2)
+        visuals[len(data)-1] = True
+        mabutton= dict(label = 'Precio Máximo',
+                 method = 'update',
+                 args = [{'visible': visuals+ invisibles},
+                         {'title': 'Precio Máximo'}])
+        botones.append(mabutton)
+    except KeyError:
+        pass
     
-    vcierre = go.Scatter(
-        x=df['fecha'], # assign x as the dataframe column 'x'
-        y=df['vcierre'],
-        visible = "legendonly",
-        name = "Ev. Cierre",
-        opacity = 0
-    )
-    vapertura = go.Scatter(
-        x=df['fecha'], # assign x as the dataframe column 'x'
-        y=df['vapertura'],
-        visible = "legendonly",
-        opacity = 0,
-        name = "Ev. Apertura"
-    )
+    try:
+        volumen = go.Scatter(
+            x=df['fecha'], # assign x as the dataframe column 'x'
+            y=df['volumen']/np.max(df['volumen']) * escala,
+            name = "Volumen",
+            mode='line'
+        )
+        data.append(volumen)
+        
+        visuals = [False] * int(len(list(df))/2)
+        visuals[len(data)-1] = True
+        vtitle = 'Volumen (Factor de escala: ' + str(escala / np.max(df['volumen']))+ ')'
+        vbutton = dict(label = 'Volumen',
+                 method = 'update',
+                 args = [{'visible': visuals + invisibles},
+                         {'title': vtitle}])
+        botones.append(vbutton)
+        
+    except KeyError:
+        pass
     
-    vminimo = go.Scatter(
-        x=df['fecha'], # assign x as the dataframe column 'x'
-        y=df['vminimo'],
-        visible = "legendonly",
-        opacity = 0,
-        name = "Ev. Mínimo"
-    )
+    try:
+        vcierre = go.Scatter(
+            x=df['fecha'], # assign x as the dataframe column 'x'
+            y=df['vcierre'],
+            visible = "legendonly",
+            name = "Ev. Cierre",
+            opacity = 0
+        )
+        data.append(vcierre)
+    except KeyError:
+        pass
     
-    vmaximo = go.Scatter(
-        x=df['fecha'], # assign x as the dataframe column 'x'
-        y=df['vmaximo'],
-        visible = "legendonly",
-        opacity = 0,
-        name = "Ev. Máximo"
-    )
+    try:
+        vapertura = go.Scatter(
+            x=df['fecha'], # assign x as the dataframe column 'x'
+            y=df['vapertura'],
+            visible = "legendonly",
+            opacity = 0,
+            name = "Ev. Apertura"
+        )
+        data.append(vapertura)
+        
+    except KeyError:
+        pass
     
-    vvolumen = go.Scatter(
-        x=df['fecha'], # assign x as the dataframe column 'x'
-        y=df['vvolumen'],
-        visible = "legendonly",
-        opacity = 0,
-        name = "Ev. Volumen"
-    )
+    try:
+        vminimo = go.Scatter(
+            x=df['fecha'], # assign x as the dataframe column 'x'
+            y=df['vminimo'],
+            visible = "legendonly",
+            opacity = 0,
+            name = "Ev. Mínimo"
+        )
+        data.append(vminimo)
+    except KeyError:
+        pass
     
-    vtitle = 'Volumen (Factor de escala: ' + str(escala / np.max(df['volumen']))+ ')'
-    data = [cierre, apertura, minimo, maximo, volumen, vcierre, vapertura, vminimo, vmaximo, vvolumen]
+    try:
+        vmaximo = go.Scatter(
+            x=df['fecha'], # assign x as the dataframe column 'x'
+            y=df['vmaximo'],
+            visible = "legendonly",
+            opacity = 0,
+            name = "Ev. Máximo"
+        )
+        data.append(vmaximo)
+    except KeyError:
+        pass
+    
+    try:
+        vvolumen = go.Scatter(
+            x=df['fecha'], # assign x as the dataframe column 'x'
+            y=df['vvolumen'],
+            visible = "legendonly",
+            opacity = 0,
+            name = "Ev. Volumen"
+        )
+        data.append(vvolumen)
+    except KeyError:
+        pass
+    
     updatemenus = list([
     dict(type="buttons",
          active=-1,
-         buttons=list([
-             dict(label = 'Todas',
-             method = 'update',
-             args = [{'visible': [True, True, True, True, True] + invisibles},
-                     {'title': 'Todos los valores'}]),
-            dict(label = 'Precio de Cierre',
-                 method = 'update',
-                 args = [{'visible': [True, False, False, False, False]+ invisibles},
-                         {'title': 'Precio de Cierre'}]),
-            dict(label = 'Precio de Apertura',
-                 method = 'update',
-                 args = [{'visible': [False, True, False, False, False]+ invisibles},
-                         {'title': 'Precio de Apertura'}]),
-            dict(label = 'Precio Mínimo',
-                 method = 'update',
-                 args = [{'visible': [False, False, True, False, False]+ invisibles},
-                         {'title': 'Precio Mínimo'}]),
-            dict(label = 'Precio Máximo',
-                 method = 'update',
-                 args = [{'visible': [False, False, False, True, False]+ invisibles},
-                         {'title': 'Precio Máximo'}]),
-            dict(label = 'Volumen',
-                 method = 'update',
-                 args = [{'visible': [False, False, False, False, True]+ invisibles},
-                         {'title': vtitle}])
-        ]),
+         buttons=list(botones),
     )
     ])
+    
     nombre_grafo = 'Registro Financiero de ' + df['ticker'][0][df['ticker'][0].find("/")+1:]
     layout = dict(title=nombre_grafo, showlegend=False,
               updatemenus=updatemenus,

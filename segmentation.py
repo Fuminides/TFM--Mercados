@@ -164,7 +164,7 @@ def interpretable_distance(f1,f2, silence2=[], pen_orden=3, vector_importancias 
         if (dif == np.inf) or (dif == -np.inf):
             dif=0
             
-        dif = dif#*_num_after_point(dif)
+        #dif = dif*_num_after_point(dif)
         if max_distancia < dif:
             max_distancia = dif
             nombre = name
