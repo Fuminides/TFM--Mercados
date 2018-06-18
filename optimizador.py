@@ -13,7 +13,6 @@ from sklearn.preprocessing import StandardScaler
 import segmentation as sg
 import clustering as cl
 import pam 
-import time_measures as tm
 
 from random import randint
 
@@ -66,16 +65,26 @@ def evaluate(datos, ponderaciones, silencios, carga_computacional=1,tipo_cluster
     '''
     Dado un clasificador y un conjunto de train y test devuelve su tasa de acierto en test.
     '''
-    if carga_computacional == 0:
-        print("Aun estoy en ello")
-        #TODO
-    elif carga_computacional>0:
-        segmentos, _ = sg.segmentate_data_frame(df=datos, montecarlo=4, min_size=7, silence=silencios, 
+    fecha = False
+    if len(ponderaciones) == 0:
+        return 0.0
+    
+    if carga_computacional < 1:
+        datos = datos.sample(int(datos.shape[0] * carga_computacional))
+        datos = datos.sort_index()
+        carga_computacional = 1
+        fecha = True
+    if carga_computacional>=1:
+        segmentos, _ = sg.segmentate_data_frame(df=datos, montecarlo=4, min_size=4, silence=silencios, 
                                                 vector_importancias=ponderaciones, verbose=False)
     
         if carga_computacional == 1:
-            segmentados = cl.apply_segmentation(datos, segmentos, silencios, ponderaciones)
-            return cl.hopkins_statistic(cl.filter_numerical(segmentados),m=4)
+            segmentados = cl.apply_segmentation(datos, segmentos, silencios, ponderaciones, fecha)
+            
+            if segmentados.shape[0] <= 6:
+                return 0.0
+            else:
+                return cl.hopkins_statistic(cl.filter_numerical(segmentados),m=int(segmentados.shape[0]*0.2))
         elif carga_computacional==2:
             if tipo_clustering == "DTW":
                 segmentados = sg.get_segments(datos, segmentos)
@@ -170,7 +179,7 @@ def generar_nuevos(pesos, silencios, names):
     
     return (nuevos_pesos1, nuevos_pesos2, [nuevos_silencios,pesos_silencio])
 
-def evaluate_explorer(datos, ponderaciones, silencios, vecindario=False):
+def evaluate_explorer(datos, ponderaciones, silencios, vecindario=False, carga=1):
     '''
     Deuvelve la tasa de acierto y con que clasificador se ha obtenido para
     una configuracion de pesos y grados.
@@ -180,26 +189,26 @@ def evaluate_explorer(datos, ponderaciones, silencios, vecindario=False):
     Devuelve - (tasa de acierto, clasificador)
     '''
     if vecindario:
-        resultado = evaluate(datos, ponderaciones, silencios)
+        resultado = evaluate(datos, ponderaciones, silencios, carga_computacional=carga)
         
         #Evaluate neighbourhood
         pesos1, pesos2, silencios2 = generar_nuevos(ponderaciones, silencios, list(datos))
         
-        sil1 = evaluate_explorer(datos, pesos1, silencios)
-        sil2 = evaluate_explorer(datos, pesos2, silencios)
-        sil3 = evaluate_explorer(datos, silencios2[1], silencios2[0])
+        sil1 = evaluate_explorer(datos, pesos1, silencios, False, carga)
+        sil2 = evaluate_explorer(datos, pesos2, silencios,False, carga)
+        sil3 = evaluate_explorer(datos, silencios2[1], silencios2[0], False, carga)
         
-        vecindario = [sil1, sil2, sil3]
+        vecindario_res = [sil1, sil2, sil3]
         
-        return resultado, vecindario
+        return resultado, vecindario_res
     else:
         
-        return evaluate(datos, ponderaciones, silencios)
+        return evaluate(datos, ponderaciones, silencios, carga_computacional=carga)
 
 ##################################
 #   COLMENA  (CONTROL)           #
 ##################################
-def nueva_ronda(datos_originales, pesos, silencios):
+def nueva_ronda(datos_originales, pesos, silencios, carga=1):
     '''
     Genera nuevos exploradores y devuelve la mejor tasa de acierto encontrada,
     con sus correspondientes pesos y grados.
@@ -212,11 +221,11 @@ def nueva_ronda(datos_originales, pesos, silencios):
     pesos1, pesos2, silencios2 = generar_nuevos(pesos, silencios, list(cl.filter_numerical(datos_originales))) #Se generan los vecinos
     
     #Se evaluan los exploradores
-    sil1, vec1 = evaluate_explorer(datos_originales, pesos1, silencios, True)
-    sil2, vec2 = evaluate_explorer(datos_originales, pesos2, silencios, True)
+    sil1, vec1 = evaluate_explorer(datos_originales, pesos1, silencios, True, carga)
+    sil2, vec2 = evaluate_explorer(datos_originales, pesos2, silencios, True, carga)
     
     if len(silencios2[1]) > 0:
-        sil3, vec3 = evaluate_explorer(datos_originales, silencios2[1], silencios2[0], True)
+        sil3, vec3 = evaluate_explorer(datos_originales, silencios2[1], silencios2[0], True, carga)
         
     
     
@@ -244,7 +253,7 @@ def nueva_ronda(datos_originales, pesos, silencios):
     return solucion
     
 
-def simple_run(data, epochs = 30, reinicio = "random", silencios=["maximo","minimo","var","apertura"]):
+def simple_run(data, epochs = 30, reinicio = "random", silencios=["maximo","minimo","var"], carga=1):
     '''
     Realiza el proceso de optimizacion de unos datos etiquetados.
     
@@ -268,9 +277,10 @@ def simple_run(data, epochs = 30, reinicio = "random", silencios=["maximo","mini
     bar.update(0)
     
     #Se calcula la solucion basica.
-    mejor_tasa_de_acierto = evaluate_explorer(data, pesos, silencios)
+    mejor_tasa_de_acierto = evaluate_explorer(data, pesos, silencios, carga=carga)
     pesos_actuales = pesos
     grados_actuales = silencios
+    grados = silencios
     
     #Se inicia el algoritmo
     for i in range(epochs):
@@ -318,7 +328,3 @@ def simple_run(data, epochs = 30, reinicio = "random", silencios=["maximo","mini
     print("Reinicios %d" % (iters_sin_mejora / 5), "Epochs sin mejora: %d" % iters_sin_mejora, "(%d%%)" % int((100*(iters_sin_mejora*1.0) / epochs)))
     
     return mejor_tasa_de_acierto, pesos, grados
-
-
-if __name__ == "main":    
-    resop = simple_run(san, epochs=1)

@@ -83,15 +83,21 @@ def extract_features(data, f,l, silence2=[]):
     rows = filter_numerical(rows)
     medias = rows.mean(axis=0)
     medias['vvolumen'] = medias['vvolumen']*0.01
+    
+    if len(silence2) == 2 and len(silence2[0]) > 1: #cutre-fix del segundo bug mas raro que me he encontrado en la vida
+        silence2 = silence2[0]
+
     if len(silence2) > 0:
         silence = silence2.copy()
         absolutos = medias[["apertura", "maximo", "minimo", "cierre", "volumen", "var"]].drop(silence, axis=0)
         for i, val in enumerate(silence):
             silence[i] = "v"+val
         tendencias = medias[["vapertura", "vmaximo", "vminimo", "vcierre", "vvolumen", "vvar"]].drop(silence, axis=0)
+        
     else:
         absolutos = medias[["apertura", "maximo", "minimo", "cierre", "volumen", "var"]]
         tendencias = medias[["vapertura", "vmaximo", "vminimo", "vcierre", "vvolumen", "vvar"]]
+        
     
     return [absolutos, tendencias]
     
@@ -266,7 +272,7 @@ def segmentate(intervalo, data, distance_function, threshold, montecarlo=2, sile
                 
     return intervals
 
-def join_segments(data, o_segments, distance, threshold, minimum_size=5, silence=[], penalizacion_orden=3, vector_importancias = [1,1,1,1,1,1,1,1,1,1,1,1]):
+def join_segments(data, o_segments, distance, threshold, minimum_size=5, silence=[], penalizacion_orden=3, vector_importancias = [1,1,1,1,1,1,1,1,1,1,1,1], fecha=False):
     '''
     Joins segments which are very similar and adjacent. That is, segments which are
     in reality just one.
@@ -297,13 +303,44 @@ def join_segments(data, o_segments, distance, threshold, minimum_size=5, silence
             
         else:
             explanations.append(cut)
-            res.append([first, last])
+            if not fecha:
+                res.append([first, last])
+            else:
+                res.append([data.iloc[first]['fecha'], data.iloc[last]['fecha']])
             
-    res.append(segments[-1])
+    if not fecha:
+        res.append(segments[-1])
+    else:
+        first = segments[-1][0]
+        last = segments[-1][1]
+        res.append([data.iloc[first]['fecha'], data.iloc[last]['fecha']])
         
     return res, explanations
 
-def segmentate_data_frame(df, montecarlo = 8, trh = 0.5, min_size=3, silence = [], penalizacion_orden = 3, verbose = False, vector_importancias = None):
+def ultra_light_segmentation(df, fecha = False):
+    '''
+    Break (ONLY) in case of emergency.
+    '''
+    cierre = df['cierre']
+    maxmin = locate_local_minmax(cierre)
+    maximals = environment_filter(maxmin, cierre, size=25)
+    inicio = 0
+    res = []
+    for i in maximals:
+        if not fecha:
+            res.append([inicio, i])
+        else:
+            res.append([df.iloc[inicio]['fecha'], df.iloc[i]['fecha']])
+        inicio = i
+    
+    if not fecha:
+        res.append([maximals[-1], df.shape[0]-1])
+    else:
+        res.append([df.iloc[maximals[-1]]['fecha'], df.iloc[df.shape[0]-1]['fecha']])
+    
+    return res
+    
+def segmentate_data_frame(df, montecarlo = 8, trh = 0.5, min_size=3, silence = [], penalizacion_orden = 3, verbose = False, vector_importancias = None, fecha = False):
     '''
     Given a financial data frame, it gets segmentated according to standard parameters.
     '''
@@ -335,7 +372,7 @@ def segmentate_data_frame(df, montecarlo = 8, trh = 0.5, min_size=3, silence = [
     if verbose:
         bar.finish()
 
-    return join_segments(df, res, interpretable_distance, trh, min_size, silence, penalizacion_orden= penalizacion_orden,vector_importancias = vector_importancias)
+    return join_segments(df, res, interpretable_distance, trh, min_size, silence, penalizacion_orden= penalizacion_orden,vector_importancias = vector_importancias, fecha=fecha)
 
 def _segmentate_subrange(i, maximals, df, distance, montecarlo, trh):
     if i==0:

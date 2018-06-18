@@ -30,11 +30,14 @@ def filter_numerical(df):
     except ValueError:
         return df
     
-def extract_features(data, f,l, silence2=[], pesos = [1,1,1,1,1,1,1,1,1,1,1,1]):
+def extract_features(data, f,l, silence2=[], pesos = [1,1,1,1,1,1,1,1,1,1,1,1], fecha=False):
     '''
     Extract features from an interval in a dataset
     '''
-    rows = data.iloc[f:l,:]
+    if not fecha:
+        rows = data.iloc[f:l,:]
+    else:
+        rows = data.loc[f:l,:]
     rows = filter_numerical(rows)
     medias = rows.mean(axis=0)
     try:
@@ -163,7 +166,7 @@ def hopkins_statistic(X, m=10):
  
     return H
     
-def apply_segmentation(X, segmentos, silencio=[], pesos = [1,1,1,1,1,1, 1,1,1,1,1,1]):
+def apply_segmentation(X, segmentos, silencio=[], pesos = [1,1,1,1,1,1, 1,1,1,1,1,1], fecha=False):
     '''
     Returns the features of each segment in the dataset.
     '''
@@ -172,7 +175,7 @@ def apply_segmentation(X, segmentos, silencio=[], pesos = [1,1,1,1,1,1, 1,1,1,1,
         inicio = seg[0]
         final = seg[1]
         
-        f = extract_features(X,inicio, final, silencio, pesos)
+        f = extract_features(X,inicio, final, silencio, pesos, fecha)
         segments_df = segments_df.append(f[0].append(f[1]), ignore_index = True)
         
     return segments_df
