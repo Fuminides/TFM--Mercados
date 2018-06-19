@@ -9,6 +9,7 @@ import random
 import progressbar
 
 from joblib import delayed, Parallel, cpu_count
+from clustering import extract_features
 
 def _num_after_point(x):
     '''
@@ -74,32 +75,7 @@ def environment_filter(maximals, series, size=10):
             keep.append(x)
     
     return keep
- 
-def extract_features(data, f,l, silence2=[]):
-    '''
-    Extract features from an interval in a dataset
-    '''
-    rows = data.iloc[f:l,:]
-    rows = filter_numerical(rows)
-    medias = rows.mean(axis=0)
-    medias['vvolumen'] = medias['vvolumen']*0.01
-    
-    if len(silence2) == 2 and len(silence2[0]) > 1: #cutre-fix del segundo bug mas raro que me he encontrado en la vida
-        silence2 = silence2[0]
 
-    if len(silence2) > 0:
-        silence = silence2.copy()
-        absolutos = medias[["apertura", "maximo", "minimo", "cierre", "volumen", "var"]].drop(silence, axis=0)
-        for i, val in enumerate(silence):
-            silence[i] = "v"+val
-        tendencias = medias[["vapertura", "vmaximo", "vminimo", "vcierre", "vvolumen", "vvar"]].drop(silence, axis=0)
-        
-    else:
-        absolutos = medias[["apertura", "maximo", "minimo", "cierre", "volumen", "var"]]
-        tendencias = medias[["vapertura", "vmaximo", "vminimo", "vcierre", "vvolumen", "vvar"]]
-        
-    
-    return [absolutos, tendencias]
     
 def distance(f1,f2, vector_importancias, penalizacion_orden=3):
     '''
@@ -415,16 +391,6 @@ def get_segments(X, segments):
         final = segmento[1]
         
         resultado.append(X.iloc[inicio:final,:].drop(['fecha','ticker'], axis=1).values)
-    
-    return resultado
-
-def get_segments_nparray(X, segments):
-    resultado = []
-    for segmento in segments:
-        inicio = segmento[0]
-        final = segmento[1]
-        
-        resultado.append(X[inicio:final,:])
     
     return resultado
     

@@ -68,15 +68,21 @@ def evaluate(datos, ponderaciones, silencios, carga_computacional=1,tipo_cluster
     fecha = False
     if len(ponderaciones) == 0:
         return 0.0
+    ligero = np.sign(carga_computacional) < 0
+    carga_computacional = abs(carga_computacional)
     
     if carga_computacional < 1:
         datos = datos.sample(int(datos.shape[0] * carga_computacional))
         datos = datos.sort_index()
         carga_computacional = 1
         fecha = True
+        
     if carga_computacional>=1:
-        segmentos, _ = sg.segmentate_data_frame(df=datos, montecarlo=4, min_size=4, silence=silencios, 
+        if not ligero:
+            segmentos, _ = sg.segmentate_data_frame(df=datos, montecarlo=4, min_size=4, silence=silencios, 
                                                 vector_importancias=ponderaciones, verbose=False)
+        else:
+            segmentos = sg.ultra_light_segmentation(datos, fecha=fecha)
     
         if carga_computacional == 1:
             segmentados = cl.apply_segmentation(datos, segmentos, silencios, ponderaciones, fecha)
@@ -84,7 +90,7 @@ def evaluate(datos, ponderaciones, silencios, carga_computacional=1,tipo_cluster
             if segmentados.shape[0] <= 6:
                 return 0.0
             else:
-                return cl.hopkins_statistic(cl.filter_numerical(segmentados),m=int(segmentados.shape[0]*0.2))
+                return cl.hopkins_statistic(cl.filter_numerical(segmentados),m=int(segmentados.shape[0]*0.5))
         elif carga_computacional==2:
             if tipo_clustering == "DTW":
                 segmentados = sg.get_segments(datos, segmentos)
@@ -159,7 +165,7 @@ def generar_nuevos(pesos, silencios, names):
     Dados unos pesos y unos grados genera tres variedades nuevas:
         -Un nuevo vector de pesos con un peso aumentado un 0.1.
         -Un nuevo vector de pesos con un peso disminuido un 0.1.
-        -Aumenta el grado de una variable.
+        -Silencia una variable.
         
     Devuelve - (Variante 1 de pesos, vairante 2 de pesos, variante de 1 grado)
     '''
@@ -174,6 +180,7 @@ def generar_nuevos(pesos, silencios, names):
     nuevos_pesos1[variable_probar] = nuevos_pesos1[variable_probar] - 0.1
     nuevos_pesos2[variable_probar] = nuevos_pesos2[variable_probar] + 0.1
     nuevos_silencios.append(names[variable_probar])
+    
     del pesos_silencio[variable_probar + int(len(pesos_silencio)/2)]
     del pesos_silencio[variable_probar]
     
@@ -192,7 +199,7 @@ def evaluate_explorer(datos, ponderaciones, silencios, vecindario=False, carga=1
         resultado = evaluate(datos, ponderaciones, silencios, carga_computacional=carga)
         
         #Evaluate neighbourhood
-        pesos1, pesos2, silencios2 = generar_nuevos(ponderaciones, silencios, list(datos))
+        pesos1, pesos2, silencios2 = generar_nuevos(ponderaciones, silencios, list(cl.filter_numerical(datos)))
         
         sil1 = evaluate_explorer(datos, pesos1, silencios, False, carga)
         sil2 = evaluate_explorer(datos, pesos2, silencios,False, carga)
@@ -218,8 +225,11 @@ def nueva_ronda(datos_originales, pesos, silencios, carga=1):
     
     Devuelve - (Tasa de acierto, pesos, grados, mejor)
     '''
-    pesos1, pesos2, silencios2 = generar_nuevos(pesos, silencios, list(cl.filter_numerical(datos_originales))) #Se generan los vecinos
-    
+    if len(silencios) > 0:
+        pesos1, pesos2, silencios2 = generar_nuevos(pesos, silencios, list(cl.filter_numerical(datos_originales))) #Se generan los vecinos
+    else:
+        pesos1, pesos2, silencios2 = generar_nuevos(pesos, [], list(cl.filter_numerical(datos_originales))) #Se generan los vecinos
+        
     #Se evaluan los exploradores
     sil1, vec1 = evaluate_explorer(datos_originales, pesos1, silencios, True, carga)
     sil2, vec2 = evaluate_explorer(datos_originales, pesos2, silencios, True, carga)
@@ -285,7 +295,7 @@ def simple_run(data, epochs = 30, reinicio = "random", silencios=["maximo","mini
     #Se inicia el algoritmo
     for i in range(epochs):
         #Se evalua la solucion actual junto con sus vecindarios
-        tasa_de_acierto, pesos_nuevos, grados_nuevos, vecindarios = nueva_ronda(data, pesos_actuales, grados_actuales)
+        tasa_de_acierto, pesos_nuevos, grados_nuevos, vecindarios = nueva_ronda(data, pesos_actuales, grados_actuales,carga=carga)
         #Se anyaden los vecindarios al monticulo.
         add_vecindarios(vecindarios)
         #Si se mejora la solucion actual, se guarda
@@ -315,6 +325,9 @@ def simple_run(data, epochs = 30, reinicio = "random", silencios=["maximo","mini
             vecino = get_best_vecindario()
             pesos_actuales = vecino[1][0]
             grados_actuales = vecino[1][1]
+            if len(grados_actuales) == 2 and isinstance(grados_actuales[0], list):
+                pesos_actuales = grados_actuales[1]
+                grados_actuales = grados_actuales[0]
           
         #Se actualiza la barra de progreso.
         bar.update(i)

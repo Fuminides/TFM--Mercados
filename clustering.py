@@ -9,11 +9,19 @@ import random
 from sklearn.neighbors import NearestNeighbors
 import pandas as pd
 import pam
-from segmentation import get_segments_nparray
 from sklearn.cluster import KMeans
 from sklearn import preprocessing, metrics
 from fastdtw import fastdtw
 
+def get_segments_nparray(X, segments):
+    resultado = []
+    for segmento in segments:
+        inicio = segmento[0]
+        final = segmento[1]
+        
+        resultado.append(X[inicio:final,:])
+    
+    return resultado
 
 def filter_numerical(df):
     '''
@@ -45,12 +53,13 @@ def extract_features(data, f,l, silence2=[], pesos = [1,1,1,1,1,1,1,1,1,1,1,1], 
     except KeyError:
         pass
     
+        
     if len(silence2) > 0:
         silence = silence2.copy()
-        absolutos = medias[["apertura", "maximo", "minimo", "cierre", "volumen", "var"]].drop(silence, axis=0)
+        absolutos = medias[["apertura", "maximo", "minimo", "cierre", "volumen", "var"]].drop(silence, errors='ignore',axis=0)
         for i, val in enumerate(silence):
             silence[i] = "v"+val
-        tendencias = medias[["vapertura", "vmaximo", "vminimo", "vcierre", "vvolumen", "vvar"]].drop(silence, axis=0)
+        tendencias = medias[["vapertura", "vmaximo", "vminimo", "vcierre", "vvolumen", "vvar"]].drop(silence,errors='ignore', axis=0)
     else:
         absolutos = medias[["apertura", "maximo", "minimo", "cierre", "volumen", "var"]]
         tendencias = medias[["vapertura", "vmaximo", "vminimo", "vcierre", "vvolumen", "vvar"]]
