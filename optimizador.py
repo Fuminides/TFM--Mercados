@@ -181,8 +181,9 @@ def generar_nuevos(pesos, silencios, names):
     nuevos_pesos2[variable_probar] = nuevos_pesos2[variable_probar] + 0.1
     nuevos_silencios.append(names[variable_probar])
     
-    del pesos_silencio[variable_probar + int(len(pesos_silencio)/2)]
-    del pesos_silencio[variable_probar]
+        #del pesos_silencio[variable_probar + int(len(pesos_silencio)/2)]
+        #del pesos_silencio[variable_probar]
+    pesos_silencio = np.delete(pesos_silencio, [variable_probar, variable_probar + int(len(pesos_silencio)/2)]  )
     
     return (nuevos_pesos1, nuevos_pesos2, [nuevos_silencios,pesos_silencio])
 
@@ -328,7 +329,9 @@ def simple_run(data, epochs = 30, reinicio = "random", silencios=["maximo","mini
             if len(grados_actuales) == 2 and isinstance(grados_actuales[0], list):
                 pesos_actuales = grados_actuales[1]
                 grados_actuales = grados_actuales[0]
-          
+        else:
+            print("Se acaba por monticulo vacio")
+            break
         #Se actualiza la barra de progreso.
         bar.update(i)
     
