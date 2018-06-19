@@ -77,7 +77,7 @@ def environment_filter(maximals, series, size=10):
     return keep
 
     
-def distance(f1,f2, vector_importancias, penalizacion_orden=3):
+def distance(f1,f2, penalizacion_orden=3):
     '''
     Computes the differences between two segments.
     '''
@@ -100,18 +100,17 @@ def distance(f1,f2, vector_importancias, penalizacion_orden=3):
     
     dabs[dabs == np.inf] = 0
     dabs[dabs == -np.inf] = 0
-    dabs = np.max(dabs * vector_importancias[0:int(len(vector_importancias)/2)])
     with np.errstate(divide='ignore'):
         dten = np.log10(np.abs(ten1 - ten2))+3 #Es * 1000 en el log
         
     dten[dten == np.inf] = 0
     dten[dten== -np.inf] = 0
-    dten2 = dten * vector_importancias[int(len(vector_importancias)/2):]
-    dten = np.max(dten2)
+    dten = np.max(dten)
+    dabs = np.max(dabs)
     
     return np.max([dabs, dten])
 
-def interpretable_distance(f1,f2, silence2=[], pen_orden=3, vector_importancias = [1,1,1,1,1,1, 1,1,1,1,1,1]):
+def interpretable_distance(f1,f2, silence2=[], pen_orden=3):
     '''
     Computes the differences between two segments, and gives the feature that causes the max distance.
     '''
@@ -135,12 +134,10 @@ def interpretable_distance(f1,f2, silence2=[], pen_orden=3, vector_importancias 
     nombre = "Ninguno"
     
     for index, name in enumerate(absolutos):
-        val1 = abs1[index] * vector_importancias[index]
-        val2 = abs2[index] * vector_importancias[index]
-        dif = (np.abs(val1 - val2) / val2)
+        dif = (np.abs(abs1[index] - abs2[index]) / abs2[index])
         
         if name == 'volumen':
-            pens = (1 + np.e**-(np.log10( abs(val1-val2) ) - pen_orden))
+            pens = (1 + np.e**-(np.log10( abs(abs1[index]-abs2[index]) ) - pen_orden))
             dif = dif / pens            
 
         if (dif == np.inf) or (dif == -np.inf):
@@ -152,9 +149,7 @@ def interpretable_distance(f1,f2, silence2=[], pen_orden=3, vector_importancias 
             nombre = name
     
     for index, name in enumerate(tendencias):
-        val1 = ten1[index] * vector_importancias[index]
-        val2 = ten2[index] * vector_importancias[index]
-        dif = np.log10(np.abs(val1 - val2))+3
+        dif = np.log10(np.abs(ten1[index] - ten2[index]))+3
 
         if (dif == np.inf) or (dif == -np.inf):
             dif=0
@@ -192,9 +187,9 @@ def valid_segment(data, intervalo, distance, threshold, montecarlo=4, silence=[]
             r21 = random.randint(first+1, last)
             
         if r21>r11:
-            features1 = extract_features(data, r11,r21, silence)
+            features1 = extract_features(data, r11,r21, silence,  pesos=vector_importancias)
         elif r11>r21:
-            features1 = extract_features(data, r21,r11, silence)
+            features1 = extract_features(data, r21,r11, silence, pesos=vector_importancias)
         
         r12 = random.randint(first+1, last)
         r22 = random.randint(first+1, last)
@@ -204,11 +199,11 @@ def valid_segment(data, intervalo, distance, threshold, montecarlo=4, silence=[]
             r22 = random.randint(first+1, last)
         
         if r22>r12:
-           features2 = extract_features(data, r12,r22, silence)
+           features2 = extract_features(data, r12,r22, silence, pesos = vector_importancias)
         elif r12>r22:
-           features2 = extract_features(data, r22,r12, silence)
+           features2 = extract_features(data, r22,r12, silence, pesos=vector_importancias)
                
-        good = distance(features1, features2, vector_importancias, penalizacion_orden) < threshold
+        good = distance(features1, features2, penalizacion_orden) < threshold
 
         if not good:
             return False
@@ -260,17 +255,17 @@ def join_segments(data, o_segments, distance, threshold, minimum_size=5, silence
         first = segments[i][0]
         last = segments[i][1]
         
-        f1 = extract_features(data, first, last, silence)
+        f1 = extract_features(data, first, last, silence, pesos=vector_importancias)
         
         first2 = segments[i+1][0]
         last2 = segments[i+1][1]
         
-        f2 = extract_features(data, first2, last2, silence)
+        f2 = extract_features(data, first2, last2, silence, pesos=vector_importancias)
         
         if (last-first+1 < minimum_size) or (last2-first2+1 < minimum_size):
             same = True
         else:
-            cut = distance(f1,f2, silence, penalizacion_orden, vector_importancias)
+            cut = distance(f1,f2,silence, penalizacion_orden)
             same = cut[0] < threshold
         
         if same:
@@ -334,7 +329,7 @@ def segmentate_data_frame(df, montecarlo = 8, trh = 0.5, min_size=3, silence = [
     
     if vector_importancias is None:
         vector_importancias = [1] * (len(list(df._get_numeric_data())) - len(silence)*2)
-        
+    
     for i in maximals:
         rango = [inicio, i]
         subsegmentos = segmentate(intervalo=rango, data=df, distance_function=distance, threshold=0.5, montecarlo=montecarlo, silence=silence, pen=penalizacion_orden,vector_importancias=vector_importancias)

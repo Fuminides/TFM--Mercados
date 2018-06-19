@@ -9,12 +9,14 @@ Created on Mon Apr 16 12:39:29 2018
 import numpy as np
 import progressbar
 import heapq
-from sklearn.preprocessing import StandardScaler
 import segmentation as sg
 import clustering as cl
 import pam 
+from scipy.stats import norm
 
 from random import randint
+from sklearn.preprocessing import StandardScaler
+
 
 #######################
 # CONSTANTES
@@ -61,6 +63,10 @@ def evaluate_vecindario(vec):
 ######################################
 #   CLASIFICADORES - ENTRENAMIENTO   #
 ######################################
+def normal_correction(mean, std, x):
+    dist = norm(mean, std)
+    
+    return dist.pdf(x) / dist.pdf(mean)
 def evaluate(datos, ponderaciones, silencios, carga_computacional=1,tipo_clustering="KMEANS", ncluster = 3, metrica = "SIL"):
     '''
     Dado un clasificador y un conjunto de train y test devuelve su tasa de acierto en test.
@@ -79,10 +85,12 @@ def evaluate(datos, ponderaciones, silencios, carga_computacional=1,tipo_cluster
         
     if carga_computacional>=1:
         if not ligero:
-            segmentos, _ = sg.segmentate_data_frame(df=datos, montecarlo=4, min_size=4, silence=silencios, 
+            segmentos, _ = sg.segmentate_data_frame(df=datos, montecarlo=1, min_size=4, silence=silencios, 
                                                 vector_importancias=ponderaciones, verbose=False)
+            mean = len(sg.ultra_light_segmentation(datos, fecha=fecha))/2
         else:
             segmentos = sg.ultra_light_segmentation(datos, fecha=fecha)
+            mean = len(segmentos)/2
     
         if carga_computacional == 1:
             segmentados = cl.apply_segmentation(datos, segmentos, silencios, ponderaciones, fecha)
@@ -90,7 +98,15 @@ def evaluate(datos, ponderaciones, silencios, carga_computacional=1,tipo_cluster
             if segmentados.shape[0] <= 6:
                 return 0.0
             else:
-                return cl.hopkins_statistic(cl.filter_numerical(segmentados),m=int(segmentados.shape[0]*0.5))
+                std = np.sqrt(mean)
+                nsegs=[]
+                for i in range(segmentados.shape[0]):
+                    nsegs.append([i,i+1])
+                segmentos = sg.join_segments(data=segmentados, o_segments=nsegs, distance=sg.distance, threshold=0.5, minimum_size=1,silence=silencios, vector_importancias=ponderaciones)[0]
+                segmentados = cl.apply_segmentation(segmentados, segmentos, silencios, ponderaciones, fecha)
+
+                return cl.hopkins_statistic(cl.filter_numerical(segmentados),m=int(segmentados.shape[0]*0.5))* normal_correction(mean, std, len(segmentados))
+            
         elif carga_computacional==2:
             if tipo_clustering == "DTW":
                 segmentados = sg.get_segments(datos, segmentos)
@@ -237,12 +253,11 @@ def nueva_ronda(datos_originales, pesos, silencios, carga=1):
     
     if len(silencios2[1]) > 0:
         sil3, vec3 = evaluate_explorer(datos_originales, silencios2[1], silencios2[0], True, carga)
-        
-    
-    
-    #Nos quedamos con la mejor solucion encontrada y el mejor vecindario encontrado.
-    mayor = np.argmax([sil1, sil2, sil3])
-    
+         
+        #Nos quedamos con la mejor solucion encontrada y el mejor vecindario encontrado.
+        mayor = np.argmax([sil1, sil2, sil3])
+    else:
+        mayor = np.argmax([sil1, sil2])
     if mayor == 2:
         solucion = [sil3, pesos, silencios2]
     elif mayor == 1:

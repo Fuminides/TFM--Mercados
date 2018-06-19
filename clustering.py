@@ -63,7 +63,7 @@ def extract_features(data, f,l, silence2=[], pesos = [1,1,1,1,1,1,1,1,1,1,1,1], 
     else:
         absolutos = medias[["apertura", "maximo", "minimo", "cierre", "volumen", "var"]]
         tendencias = medias[["vapertura", "vmaximo", "vminimo", "vcierre", "vvolumen", "vvar"]]
-    
+        
     return [absolutos * pesos[0:int(len(pesos)/2)], tendencias * pesos[int(len(pesos)/2):]]
 
 def full_clustering(X, segmentos, n_clus = 3, mode="K-Means", silencio=[], pesos = None, normalizar = False):
