@@ -14,7 +14,7 @@ import numpy as np
 from ggplot import ggplot, geom_line, aes, xlab,ylab, ggtitle, geom_point, theme, element_text
 from matplotlib import colors as mcolors
 from sklearn.decomposition import PCA
-from clustering import minmax_norm
+from clustering import minmax_norm, filter_numerical
 
 def plot_line(X,y,title=None,labelx=None,labely=None,save=False, colors=None):
     '''
@@ -275,7 +275,7 @@ def full_plot(df, segmentos, clusters=[]):
     
     return py.plot(fig, filename=df['ticker'][0].replace('/', "_"))
 
-def visualize_clusters(X, var):
+def visualize_clusters(X, var, color = 'cluster'):
     '''
     Prints with ggplot a visualization of the different clusters.
     '''
@@ -285,7 +285,7 @@ def visualize_clusters(X, var):
     aux.index = X.index
     
     aux[var] = X[var]
-    aux['Cluster'] = X['cluster']
+    aux['Cluster'] = X[color]
     
     return ggplot(aes(x='fecha', y=var, color='Cluster'), aux) + geom_point() + xlab(var) + ylab("Valor") + ggtitle("Clustering de la variable \"" + var + "\"") +  theme(axis_text_x  = element_text(color=[0,0,0,0]))
 
@@ -302,21 +302,28 @@ def visualize_segmentation(X, var):
     return ggplot(aes(x="fecha", y=var, color="Segmento"), aux) + geom_point() + xlab("Fecha") + ylab(var) + ggtitle("Segmentacion de la variable \"" + var + "\"") +  theme(axis_text_x  = element_text(color=[0,0,0,0]))
     
 
-def biplot(X):
+def biplot(X, color='cluster'):
     '''
     Prints a biplot with ggplot. Requires color variable: "cluster" in the dataframe.
     '''
     pca = PCA(n_components=2)
-    try:
-        res = pca.fit_transform(minmax_norm(X).drop(['fecha','ticker','cluster'], axis=1))
-    except ValueError:
-        res = pca.fit_transform(minmax_norm(X))
-        
+    
+    res = pca.fit_transform(filter_numerical(X))
+    
     df = pandas.DataFrame(res)
     df.columns = ["x", "y"]
-    df['cluster'] = X['cluster'].values
     
-    return ggplot(aes("x","y", color="cluster"),df) + geom_point()
+    if color == 'cluster':
+        df['Cluster'] = X[color].values
+        color = 'Cluster'
+    else:
+        c = X[color].values
+        c[c=="1"] = "Normal"
+        c[c=="-1"] = "Anomalia"
+        df['Detectado como:'] = c
+        color = 'Detectado como:'
+    
+    return ggplot(aes("x","y", color=color),df) + geom_point(aes(size=40))
 
 def plotly_biplot(X):
     '''

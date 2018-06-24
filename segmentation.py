@@ -281,6 +281,8 @@ def join_segments(data, o_segments, distance, threshold, minimum_size=5, silence
             
     if not fecha:
         res.append(segments[-1])
+        if segments[-1][1] != data.shape[0]-1:
+            res.append([segments[-1][1],data.shape[0]-1])
     else:
         first = segments[-1][0]
         last = segments[-1][1]

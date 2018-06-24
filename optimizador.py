@@ -28,6 +28,7 @@ COTA_MINIMA = 3
 heap_vecinos = []
 iterations = 0
 nombres = []
+light_segs = []
 #########################
 
 ################################
@@ -71,6 +72,8 @@ def evaluate(datos, ponderaciones, silencios, carga_computacional=1,tipo_cluster
     '''
     Dado un clasificador y un conjunto de train y test devuelve su tasa de acierto en test.
     '''
+    global light_segs
+    
     fecha = False
     if len(ponderaciones) == 0:
         return 0.0
@@ -89,8 +92,12 @@ def evaluate(datos, ponderaciones, silencios, carga_computacional=1,tipo_cluster
                                                 vector_importancias=ponderaciones, verbose=False)
             mean = len(sg.ultra_light_segmentation(datos, fecha=fecha))/2
         else:
-            segmentos = sg.ultra_light_segmentation(datos, fecha=fecha)
+            if len(light_segs) == 0:
+                light_segs = sg.ultra_light_segmentation(datos, fecha=fecha) 
+                
+            segmentos = light_segs
             mean = len(segmentos)/2
+            #mean = int(datos.shape[0]/100)
     
         if carga_computacional == 1:
             segmentados = cl.apply_segmentation(datos, segmentos, silencios, ponderaciones, fecha)
@@ -102,7 +109,7 @@ def evaluate(datos, ponderaciones, silencios, carga_computacional=1,tipo_cluster
                 nsegs=[]
                 for i in range(segmentados.shape[0]):
                     nsegs.append([i,i+1])
-                segmentos = sg.join_segments(data=segmentados, o_segments=nsegs, distance=sg.distance, threshold=0.5, minimum_size=1,silence=silencios, vector_importancias=ponderaciones)[0]
+                segmentos = sg.join_segments(data=segmentados, o_segments=nsegs, distance=sg.interpretable_distance, threshold=0.5, minimum_size=1,silence=silencios, vector_importancias=ponderaciones)[0]
                 segmentados = cl.apply_segmentation(segmentados, segmentos, silencios, ponderaciones, fecha)
 
                 return cl.hopkins_statistic(cl.filter_numerical(segmentados),m=int(segmentados.shape[0]*0.5))* normal_correction(mean, std, len(segmentados))

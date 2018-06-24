@@ -29,7 +29,7 @@ def filter_numerical(df):
     (apertura, cierre, minimo, maximo, volumen)
     '''
     try: 
-        candidatos = ["ticker", "fecha", "cluster"]
+        candidatos = ["ticker", "fecha", "cluster", 'anomaly']
         finalistas = []
         for i in candidatos:
             if i in list(df):
@@ -66,17 +66,18 @@ def extract_features(data, f,l, silence2=[], pesos = [1,1,1,1,1,1,1,1,1,1,1,1], 
         
     return [absolutos * pesos[0:int(len(pesos)/2)], tendencias * pesos[int(len(pesos)/2):]]
 
-def full_clustering(X, segmentos, n_clus = 3, mode="K-Means", silencio=[], pesos = None, normalizar = False):
+def full_clustering(X, segmentos, n_clus = 3, mode="K-Means", silencio=[], pesos = None, normalizar = True):
     '''
     Given a data frame and their segmentation (segments indexes) this function applies
     clustering for each segment and returns the dataframe with the representation of 
     the segments.
     '''
+    X.drop('cluster',axis=1,errors='ignore', inplace=True)
     if pesos is None:
          pesos = [1] * (len(list(X._get_numeric_data())) - len(silencio)*2)
             
     if mode == "K-Means":    
-            
+         
         segments_df = apply_segmentation(X, segmentos, silencio, pesos)
             
         if normalizar:
@@ -97,12 +98,15 @@ def full_clustering(X, segmentos, n_clus = 3, mode="K-Means", silencio=[], pesos
         X_np = np.array(X_num)
         
         X_segments = get_segments_nparray(X_np, segmentos)
+            
         _, best_choice, best_res =  pam.kmedoids(X_segments, n_clus)
 
         fit = FTWFit(best_choice, filter_numerical(X))
         
         segments_df = apply_segmentation(X, segmentos, silencio, pesos)
         segments_df = add_clustering_segments(segments_df, best_choice, best_res)
+        if normalizar:
+            segments_df = minmax_norm(segments_df)
         
     return segments_df, fit
 
@@ -167,8 +171,10 @@ def hopkins_statistic(X, m=10):
         ujd.append(u_dist[0][1])
         w_dist, _ = nbrs.kneighbors(X.iloc[Y[j]].values.reshape(1, -1), 2, return_distance=True)
         wjd.append(w_dist[0][1])
- 
-    H = sum(ujd) / (sum(ujd) + sum(wjd))
+    try:
+        H = sum(ujd) / (sum(ujd) + sum(wjd))
+    except ZeroDivisionError:
+        H = 0
     
     if np.isnan(H):
         H = 0
@@ -220,7 +226,6 @@ def add_segmentation(X, segmentos):
     ultimo = segmentos[-1][1]
     X['segmento'].iloc[ultimo:X.shape[0]] = index+1
         
-    return X
         
 def minmax_norm(df_0):
     '''
@@ -246,7 +251,9 @@ def sil_metric(X):
     '''
     Return the sillhoutte coefficent of a data frame that has a 'cluster' column.
     '''
-    return metrics.silhouette_score(X, X['cluster'], metric='sqeuclidean')
+    res = filter_numerical(X)
+    res['cluster'] = X['cluster']
+    return metrics.silhouette_score(res, res['cluster'], metric='sqeuclidean')
 
 
 class FTWFit:
@@ -258,7 +265,7 @@ class FTWFit:
             
     def predict(self, point):
         best = np.inf
-        for key, value in self.centroides.iteritems():
+        for key, value in self.centroides.items():
             tmp = fastdtw(point, value)[0]
             
             if best > tmp:
